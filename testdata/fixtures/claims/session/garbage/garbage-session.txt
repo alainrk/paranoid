@@ -1,0 +1,3 @@
+This is not any recognized agent session format.
+It is just a stray log file, no JSON lines, no markdown headers.
+12345 lorem ipsum dolor sit amet.

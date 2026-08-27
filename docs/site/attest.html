@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, signing &amp; attest</title>
+<meta name="description" content="Sign a JSON report with a local ed25519 key or Sigstore keyless via cosign, check it with attest verify, and the --trailer and --badge flags.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html" class="on">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Trust</span>
+    <h1>Signing &amp; attest</h1>
+    <p class="lede">
+      Sign a JSON report so it can later be checked for tampering,
+      check a signed report, print a commit trailer, and write a
+      shields.io badge.
+    </p>
+
+    <h2>Signing modes</h2>
+    <p>
+      Two modes, both under <code>verify --sign</code>. <code>local</code>
+      (the default: bare <code>--sign</code> or <code>--sign=local</code>)
+      uses an ed25519 keypair generated by <code>paranoid attest
+      keygen</code> and never touches the network. <code>--sign=keyless</code>
+      shells out to the <code>cosign</code> CLI to run Sigstore's
+      keyless signing flow, the same pattern this tool already uses
+      for git and docker: shell out to a real binary instead of
+      importing its SDK. There is no Sigstore Go dependency. Keyless
+      signing does use the network, and, outside a recognized CI OIDC
+      environment, needs an interactive browser login; it only runs
+      when you pass <code>--sign=keyless</code>.
+    </p>
+    <p>
+      <code>--sign</code> requires <code>--format json</code> and
+      <code>--output</code>: the signature covers exactly the bytes
+      written to <code>--output</code>, so there is always a file on
+      disk whose bytes match what was signed. It writes
+      <code>&lt;output&gt;.sig</code> next to it (and, for keyless,
+      <code>&lt;output&gt;.pem</code>, the signing certificate).
+    </p>
+
+    <h2>Generating a local key</h2>
+    <pre><code>$ paranoid attest keygen
+wrote /home/you/.config/paranoid/attest.key and /home/you/.config/paranoid/attest.key.pub</code></pre>
+    <p>
+      Writes <code>attest.key</code> (private, hex-encoded ed25519
+      seed) and <code>attest.key.pub</code> (public), both permission
+      0600, to <code>${XDG_CONFIG_HOME:-~/.config}/paranoid</code>.
+      <code>--force</code> overwrites an existing key; without it,
+      keygen refuses to run if a key already exists there, since
+      overwriting silently would strand every signature already made
+      with the old key: a later verify against the new public key
+      would read as tampered, not merely "signed with an old key".
+    </p>
+
+    <h2>Signing a report</h2>
+    <pre><code>$ paranoid verify --format json --output report.json --sign
+$ ls report.json report.json.sig</code></pre>
+    <p>
+      For <code>--sign=keyless</code>, cosign also needs to be on
+      <code>PATH</code>; without it, <code>--sign=keyless</code> fails
+      with a clear error naming <code>--sign=local</code> as the
+      offline alternative.
+    </p>
+
+    <h2>paranoid attest verify</h2>
+    <pre><code>$ paranoid attest verify --report report.json --sig report.json.sig
+valid: local ed25519, signed 2026-08-26T12:00:00Z, key fingerprint 3f2a9c1d7b4e6081</code></pre>
+    <p>
+      Reads the signature file to decide the mode: a local signature
+      is a small, self-describing JSON envelope (mode
+      <code>"local"</code>); anything else is treated as a keyless
+      signature, checked by shelling out to <code>cosign
+      verify-blob</code>. No flag is needed to say which mode a given
+      <code>.sig</code> file is.
+    </p>
+
+    <div class="twrap">
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--report string</td><td>required</td><td>The report file to check</td></tr>
+      <tr><td>--sig string</td><td>required</td><td>The signature file written by verify --sign</td></tr>
+      <tr><td>--key string</td><td>attest.key.pub in the config directory</td><td>Public key file for a local signature</td></tr>
+      <tr><td>--cert string</td><td>the .pem file next to --sig</td><td>Certificate file for a keyless signature</td></tr>
+    </table>
+    </div>
+
+    <h3>Exit codes</h3>
+    <table class="mono">
+      <tr><th>Code</th><th>Meaning</th></tr>
+      <tr><td>0</td><td>Signature is valid</td></tr>
+      <tr><td>2</td><td>Signature is invalid</td></tr>
+      <tr><td>3</td><td>Could not attempt verification (missing or unreadable file, malformed signature, cosign not on PATH for a keyless signature)</td></tr>
+    </table>
+    <p>
+      For a local signature, exit code 2 always means the report bytes
+      do not match the signature and key: the report was edited after
+      signing, or the wrong public key was used. For a keyless
+      signature, exit code 2 means cosign's own
+      <code>verify-blob</code> refused it; cosign's exit code does not
+      distinguish a genuinely invalid signature from an operational
+      failure on its side (a network hiccup, a Sigstore outage), so
+      read the printed reason text to tell those apart.
+    </p>
+
+    <h2>Identity is not pinned</h2>
+    <p>
+      Keyless verification checks
+      <code>--certificate-identity-regexp .*</code> and
+      <code>--certificate-oidc-issuer-regexp .*</code>: it proves the
+      report was signed by <em>someone</em> through a Fulcio-issued
+      certificate logged in Sigstore's Rekor transparency log, not by
+      any specific person, email, or CI job. The signer info line on a
+      successful verification reads the certificate's own identity
+      (email, else URL, else subject) for display only; that is not an
+      access-control decision. Pinning a specific identity is left for
+      a future task.
+    </p>
+
+    <h2>--trailer</h2>
+    <p>
+      Prints <code>Audited-by: paranoid score=NN verdict=V</code> as
+      the last line on stdout, meant to go into a commit trailer:
+    </p>
+    <pre><code>$ paranoid verify --trailer
+...
+Audited-by: paranoid score=92 verdict=pass
+
+$ git commit --trailer "$(paranoid verify --trailer | tail -n1)" -m "message"</code></pre>
+
+    <h2>--badge &lt;file&gt;</h2>
+    <p>
+      Writes a <a href="https://shields.io/badges/endpoint-badge">shields.io
+      endpoint badge</a> as JSON, deterministically: the same score
+      and verdict always produce the same bytes.
+    </p>
+    <pre><code>$ paranoid verify --badge badge.json
+$ cat badge.json
+{
+  "schemaVersion": 1,
+  "label": "paranoid",
+  "message": "score 92",
+  "color": "brightgreen"
+}</code></pre>
+    <p>
+      Color follows the verdict: <code>brightgreen</code> for pass,
+      <code>yellow</code> for warn, <code>red</code> for fail. Host the
+      file wherever your CI already publishes artifacts and point a
+      shields.io endpoint badge URL at it.
+    </p>
+
+    <h2>Where the signature lives</h2>
+    <p>
+      A signature is always a sidecar file next to the report, never
+      part of the report's own JSON. The report schema
+      (<code>schema_version</code>) is unchanged by signing.
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

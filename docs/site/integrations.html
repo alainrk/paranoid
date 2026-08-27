@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, integrations</title>
+<meta name="description" content="The GitHub Action, the pre-commit hook, and Claude Code (Stop hook and MCP server).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html" class="on">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Integrate</span>
+    <h1>Integrations</h1>
+    <p class="lede">
+      Ways to wire paranoid into a workflow: the GitHub Action, a
+      pre-commit hook, and Claude Code (a Stop hook plus an MCP
+      server). All run the same binary you use locally; none is a
+      separate product.
+    </p>
+
+    <h2>GitHub Action</h2>
+    <p>
+      The composite action at <code>alainrk/paranoid/action@main</code>
+      runs <code>verify</code> on the pull request range, uploads the
+      report as an artifact, appends it to the job summary, optionally
+      posts a sticky PR comment, and sets the check status from the
+      verdict. Full inputs, outputs, and the SARIF upload example are
+      on the <a href="exit-codes-ci.html">Exit codes &amp; CI</a> page.
+    </p>
+    <pre><code>- uses: alainrk/paranoid/action@main
+  with:
+    sandbox: none # or auto, when the runner has docker
+    claims: summary.md # optional</code></pre>
+
+    <h2>pre-commit</h2>
+    <p>
+      This repository ships <code>.pre-commit-hooks.yaml</code> with
+      one hook, <code>paranoid-verify</code>. Add it to a target
+      project's <code>.pre-commit-config.yaml</code>:
+    </p>
+    <pre><code>repos:
+  - repo: https://github.com/alainrk/paranoid
+    rev: main # pin a tag or commit
+    hooks:
+      - id: paranoid-verify</code></pre>
+    <p>Then, in the target project:</p>
+    <pre><code>pre-commit install --hook-type pre-commit --hook-type pre-push
+pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
+
+    <h3>What the hook runs</h3>
+    <pre><code>paranoid verify --sandbox none --offline --base HEAD</code></pre>
+    <ul>
+      <li><strong>--sandbox none:</strong> no clean-room re-run of the test suite. A container build on every commit would be far too slow for a pre-commit hook; the sandbox rules are reported as skipped instead. Run <code>paranoid verify</code> by hand, or in CI, for the full clean-room check.</li>
+      <li><strong>--offline:</strong> no registry lookups. A pre-commit hook should not need the network at all; DEP001 to DEP004 are reported as skipped.</li>
+      <li><strong>--base HEAD:</strong> compare against the last commit. <code>--head</code> stays at its default, the working tree.</li>
+      <li><strong>--format text</strong> (the default) is used as is. Add <code>args: [--fail-under, "80"]</code> (or any other <code>verify</code> flag) in the target project's own hook entry to raise the bar, since pre-commit appends <code>args</code> after <code>entry</code>.</li>
+    </ul>
+
+    <h3>What "the commit range" means at each stage</h3>
+    <p>
+      <code>stages: [pre-commit, pre-push]</code> runs the exact same
+      command at both points, and <code>--base HEAD</code> means
+      different things depending on when it runs.
+    </p>
+    <ul>
+      <li>
+        At the <code>pre-commit</code> stage, HEAD is the last real
+        commit and the working tree holds whatever is about to be
+        committed, so the check is meaningful. One caveat: paranoid
+        diffs HEAD against the working tree, not against the git
+        index, so unstaged changes present at commit time are included
+        too.
+      </li>
+      <li>
+        At the <code>pre-push</code> stage, the working tree is
+        normally clean, so <code>--base HEAD</code> finds nothing to
+        check. This stage is only a second chance to catch what
+        <code>git commit --no-verify</code> skipped, not an audit of
+        the commits about to be pushed. For that, run
+        <code>paranoid verify --base origin/main</code> by hand, or
+        use the GitHub Action.
+      </li>
+    </ul>
+
+    <h3>Why language: golang</h3>
+    <p>
+      pre-commit's <code>golang</code> language builds the hook's own
+      repository with <code>go install ./...</code> inside an isolated
+      Go environment it manages itself. Since this repo has a
+      <code>go.mod</code> at the root and its command lives at
+      <code>cmd/paranoid</code>, that install produces a binary named
+      <code>paranoid</code> (Go names the binary after the directory
+      holding <code>package main</code>), which lands on
+      <code>PATH</code> inside pre-commit's environment and matches
+      the hook's <code>entry</code> line. No manual install step or
+      wrapper script is needed; the only prerequisite is a Go
+      toolchain, which pre-commit's <code>golang</code> language can
+      provide on its own.
+    </p>
+
+    <div class="card">
+      <p>
+        There is no GitLab CI component or merge-request comment
+        integration.
+      </p>
+    </div>
+
+    <h2>Claude Code</h2>
+    <p>
+      A settings.json hook config, and an MCP server. Neither needs
+      extra Go code; the hook is pure configuration. Full docs, the
+      settings snippet, and the security notes:
+      <a href="https://github.com/alainrk/paranoid/tree/main/integrations/claude-code">integrations/claude-code/README.md</a>.
+    </p>
+
+    <h3>Stop hook and PreToolUse variant</h3>
+    <pre><code>{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "paranoid verify --sandbox none --offline --format text --fail-under 80 --strict 1&gt;&amp;2"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit *)",
+            "command": "paranoid verify --sandbox none --offline --format text --fail-under 80 --strict 1&gt;&amp;2"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+    <p>
+      Copy the <code>hooks</code> block into <code>.claude/settings.json</code>
+      (committed, shared) or <code>.claude/settings.local.json</code>
+      (personal). Claude Code's Stop hook contract blocks the session
+      only on exit code 2, with the command's stderr fed back as the
+      reason; the trailing <code>1&gt;&amp;2</code> redirects
+      <code>verify</code>'s report (stdout by default) to stderr so
+      Claude actually sees it, and <code>--strict</code> maps a warn
+      verdict onto exit 2 too, since a plain exit 1 does not block.
+      The PreToolUse variant uses Claude Code's <code>if</code> field
+      to gate on the Bash tool's command text
+      (<code>Bash(git commit *)</code>), the real mechanism for
+      scoping a hook to one command; <code>matcher</code> alone only
+      matches the tool name.
+    </p>
+
+    <h3>MCP server</h3>
+    <p>
+      <code>paranoid mcp</code> runs a Model Context Protocol server
+      over stdio: newline-delimited JSON-RPC 2.0, hand-rolled on the
+      standard library, no SDK dependency. It implements
+      <code>initialize</code>, <code>tools/list</code>, and
+      <code>tools/call</code> for one tool, <code>verify</code>
+      (arguments: <code>path</code>, <code>base</code>,
+      <code>head</code>, <code>claims</code>, <code>session</code>,
+      <code>offline</code>, <code>sandbox</code>), which runs the same
+      pipeline as <code>paranoid verify</code> and returns the JSON
+      report as the tool result. Wire it into Claude Code as an MCP
+      server, for example:
+    </p>
+    <pre><code>{
+  "mcpServers": {
+    "paranoid": {
+      "command": "paranoid",
+      "args": ["mcp"]
+    }
+  }
+}</code></pre>
+
+    <h3>Trust boundary</h3>
+    <p>
+      Both integrations are only as trustworthy as the binary they run
+      and the files that configure them. If the agent under audit can
+      edit the installed <code>paranoid</code> binary,
+      <code>.paranoid-baseline.json</code>, or the hook configuration,
+      it can make paranoid say pass. Install paranoid outside the
+      repository the agent can write to, and point the hook at that
+      installed binary on <code>PATH</code>, never a repo-local build.
+      SF006 watches <code>.paranoid-baseline.json</code> and hook
+      configuration files for exactly this: it does not prevent the
+      edit, it surfaces it as a finding in the next run a human reads.
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

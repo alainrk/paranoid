@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, baseline and suppressions</title>
+<meta name="description" content="Snapshot existing findings so only new ones fail CI, and hand-suppress a specific finding with a reason and an expiry.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html" class="on">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Report</span>
+    <h1>Baseline and suppressions</h1>
+    <p class="lede">
+      On a repository that has never run paranoid, <code>verify</code>
+      reports every finding in the range, not only the latest change.
+      A baseline snapshots those findings so only new ones fail CI.
+    </p>
+
+    <div class="card">
+      <p>
+        <code>.paranoid-baseline.json</code> is the only file paranoid
+        reads besides command-line flags. It never changes which rules
+        run and never tunes a threshold. It only records which findings
+        were already reviewed and carried forward, the same job a
+        linter's baseline file does elsewhere. It is data, not
+        configuration.
+      </p>
+    </div>
+
+    <h2>Adopt paranoid on an existing repo</h2>
+    <p>Run this once, from the repo root:</p>
+    <pre><code>paranoid baseline --base &lt;the oldest point you care about&gt;</code></pre>
+    <p>
+      This runs the exact same checks as <code>verify</code> and
+      writes every finding it sees to <code>.paranoid-baseline.json</code>,
+      with no reason and no expiry. Commit that file.
+    </p>
+    <p>
+      From then on, <code>verify</code> auto-loads it: any finding
+      that still matches one of its entries moves out of the report's
+      findings and into a <code>suppressed</code> section instead, and
+      the score ignores it. New findings, the ones an agent introduces
+      after adoption, still fail the run exactly as before. Nothing is
+      hidden: the <code>suppressed</code> section always lists what
+      was suppressed and why, in every format, even when it is empty.
+    </p>
+    <p>
+      A baseline entry is matched by rule ID, file, and a fingerprint
+      of the finding's evidence text, not by line number, so it
+      survives unrelated edits elsewhere in the file. It does not
+      survive the evidence text itself changing, or the finding moving
+      to a different file.
+    </p>
+
+    <h2>Flags that control it</h2>
+    <table class="mono">
+      <tr><th>Flag</th><th>Meaning</th></tr>
+      <tr><td>--baseline &lt;file&gt;</td><td>Load this file instead of the auto-detected .paranoid-baseline.json at the repo root</td></tr>
+      <tr><td>--no-baseline</td><td>Ignore any baseline file, including the auto-detected one</td></tr>
+    </table>
+    <p>
+      A baseline file that exists but cannot be parsed is always a
+      hard error (exit 3), whether it was auto-detected or named
+      explicitly. Only a genuinely missing file at the auto-detected
+      path is silently treated as "nothing to suppress"; a missing
+      file named explicitly by <code>--baseline</code> is still an
+      error, since you asked for that file by name.
+    </p>
+
+    <h2>Hand-suppressing one finding</h2>
+    <p>
+      You can also hand-edit <code>.paranoid-baseline.json</code> to
+      suppress one specific finding you have reviewed and accept,
+      instead of baselining everything. Every entry may carry a
+      <code>reason</code> and an <code>expires</code> date (RFC 3339,
+      for example <code>2026-12-01</code>).
+    </p>
+    <pre><code>{
+  "baseline_version": 1,
+  "tool_version": "v0.1.0",
+  "created_at": "2026-08-20T10:00:00Z",
+  "entries": [
+    {
+      "rule_id": "DEP003",
+      "file": "package.json",
+      "fingerprint": "a1b2c3...",
+      "reason": "internal package, low downloads expected",
+      "expires": "2026-12-01"
+    }
+  ]
+}</code></pre>
+    <p>
+      <code>paranoid baseline</code> never sets <code>reason</code> or
+      <code>expires</code> itself, so if you set <code>expires</code>
+      by hand you must also set <code>reason</code>, non-empty. A
+      permanent hand-added suppression (no <code>expires</code>) is
+      not required to have one, though it is good practice to always
+      say why.
+    </p>
+    <p>
+      Once <code>expires</code> passes, that entry stops suppressing:
+      the finding comes back into the report and the score, and the
+      report still lists the expired entry so you see it happened.
+    </p>
+    <div class="card">
+      <p>
+        Re-running <code>paranoid baseline</code> writes a fresh, full
+        snapshot from scratch and discards any reason or expiry you
+        added by hand. Treat it as a reset, not a merge.
+      </p>
+    </div>
+
+    <h2>What the report shows</h2>
+    <p>
+      The report's <code>suppressed</code> block has a <code>count</code>
+      (findings actually removed from scoring) and a list of
+      <code>entries</code>: every baseline entry that matched a finding
+      this run, whether it suppressed it or had already expired. An
+      expired match is exactly as visible as an active one, distinguished
+      by one field, and its finding is simultaneously back in
+      <code>findings</code> and counted in the score. See
+      <a href="report-schema.html">Report &amp; schema</a> for the
+      exact JSON shape.
+    </p>
+    <p>
+      A <code>.paranoid.toml</code> <code>[[disable]]</code> entry can
+      also add entries to the same <code>suppressed</code> block; each
+      entry's <code>source</code> field says which one matched it,
+      <code>"baseline"</code> or <code>"policy"</code>, and text/markdown
+      output labels them <code>suppressed-by-baseline</code> and
+      <code>suppressed-by-policy</code> so the two are never confused.
+      See <a href="policy.html">Team policy file</a>.
+    </p>
+
+    <h2>baseline command flags</h2>
+    <p>
+      <code>paranoid baseline [path]</code> accepts the same
+      <code>--base</code>, <code>--head</code>, <code>--offline</code>,
+      <code>--sandbox</code>, <code>--sandbox-image</code>,
+      <code>--sandbox-timeout</code>, and <code>--compare-base</code>
+      flags as <code>verify</code>, so a baseline is generated from
+      exactly the range you would otherwise verify. It always writes
+      a full snapshot to <code>.paranoid-baseline.json</code> at the
+      repo root; there is no output path flag. It exits 0 on success
+      and 3 on any error; it has no score of its own, so nothing maps
+      to exit 1 or 2.
+    </p>
+
+    <h2>Using this in CI</h2>
+    <p>
+      Generate and commit <code>.paranoid-baseline.json</code> once,
+      locally, before turning on CI enforcement or the GitHub Action.
+      The Action needs no extra input for this: <code>verify</code>
+      auto-detects the committed file at the repo root the same way it
+      does outside CI. See
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>.
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "findings": [
+    {"rule_id": "AS001", "severity": "high", "category": "api-surface", "file": "calc.go", "line": 0},
+    {"rule_id": "AS002", "severity": "medium", "category": "api-surface", "file": "calc.go", "line": 0},
+    {"rule_id": "CLM003", "severity": "low", "category": "claims", "file": "", "line": 0},
+    {"rule_id": "TI001", "severity": "critical", "category": "test-integrity", "file": "calc_test.go", "line": 0}
+  ]
+}

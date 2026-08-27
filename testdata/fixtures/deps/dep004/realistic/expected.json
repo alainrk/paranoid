@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "DEP004", "severity": "high", "category": "dependencies", "file": "requirements.txt", "line": 2}
+  ]
+}

@@ -1,0 +1,2 @@
+- Implemented stripComment for trailing comments
+- Added handleMultilineStrings for quoted blocks

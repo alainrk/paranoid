@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "paranoid verify --sandbox none --offline --format text --fail-under 80"
+          }
+        ]
+      }
+    ]
+  }
+}

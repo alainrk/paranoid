@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "SF004", "severity": "high", "category": "safety", "file": ".husky/pre-commit", "line": 0}
+  ]
+}

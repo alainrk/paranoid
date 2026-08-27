@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "TI006", "severity": "high", "category": "test-integrity", "file": "pricing.test.js", "line": 5}
+  ]
+}

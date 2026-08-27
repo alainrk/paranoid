@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "TI013", "severity": "medium", "category": "test-integrity", "file": "health_test.go", "line": 6}
+  ]
+}

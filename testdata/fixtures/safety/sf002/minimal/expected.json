@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "SF002", "severity": "medium", "category": "safety", "file": "views.py", "line": 0}
+  ]
+}

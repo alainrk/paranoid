@@ -1,0 +1,164 @@
+name: paranoid
+description: >
+  Verify an AI coding agent's work on this pull request: gamed tests,
+  hallucinated dependencies, clean-room failures, and claims that do
+  not match the diff.
+author: alainrk
+
+inputs:
+  base:
+    description: State before the agent worked. Defaults to the PR base.
+    default: ""
+  head:
+    description: State after the agent worked. Defaults to the PR head.
+    default: ""
+  claims:
+    description: Path to a free-text file with the agent's summary.
+    default: ""
+  session:
+    description: >
+      Path to an agent session file (Claude Code, Codex CLI, Gemini
+      CLI, Aider, or Cursor). Format is auto-detected. Ignored when
+      claims is also set.
+    default: ""
+  sandbox:
+    description: "Clean-room runtime: auto, docker, podman, or none."
+    default: "auto"
+  offline:
+    description: Skip registry lookups.
+    default: "false"
+  fail-under:
+    description: Fail when the score drops below this.
+    default: "50"
+  strict:
+    description: Treat a warn verdict as failure.
+    default: "false"
+  baseline:
+    description: >
+      Path to a baseline file, overriding the auto-detected
+      .paranoid-baseline.json at the repo root.
+    default: ""
+  no-baseline:
+    description: Ignore any baseline file, including the auto-detected one.
+    default: "false"
+  version:
+    description: paranoid ref to install with go install.
+    default: "main"
+  comment:
+    description: >
+      Post or update a sticky PR comment with the report. Needs the
+      pull-requests write permission on the calling workflow.
+    default: "true"
+  sarif:
+    description: >
+      Also write paranoid-report.sarif (SARIF 2.1.0), so a later step
+      in the calling workflow can upload it to GitHub code scanning
+      with github/codeql-action/upload-sarif. This action does not
+      upload it itself: that needs the security-events write
+      permission, which stays opt-in in the calling workflow.
+    default: "false"
+
+outputs:
+  verdict:
+    description: pass, warn, or fail.
+    value: ${{ steps.verify.outputs.verdict }}
+  score:
+    description: The 0 to 100 trust score.
+    value: ${{ steps.verify.outputs.score }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version: stable
+
+    # All expression values reach the shell through environment
+    # variables, never through inline interpolation, so untrusted
+    # context data cannot inject shell code.
+    - name: Install paranoid
+      shell: bash
+      env:
+        PA_VERSION: ${{ inputs.version }}
+      run: go install "github.com/alainrk/paranoid/cmd/paranoid@${PA_VERSION}"
+
+    - name: Run verify
+      id: verify
+      shell: bash
+      env:
+        PA_BASE: ${{ inputs.base }}
+        PA_HEAD: ${{ inputs.head }}
+        PA_CLAIMS: ${{ inputs.claims }}
+        PA_SESSION: ${{ inputs.session }}
+        PA_SANDBOX: ${{ inputs.sandbox }}
+        PA_OFFLINE: ${{ inputs.offline }}
+        PA_FAIL_UNDER: ${{ inputs.fail-under }}
+        PA_STRICT: ${{ inputs.strict }}
+        PA_BASELINE: ${{ inputs.baseline }}
+        PA_NO_BASELINE: ${{ inputs.no-baseline }}
+        PA_SARIF: ${{ inputs.sarif }}
+        PA_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        BASE="$PA_BASE"
+        if [ -z "$BASE" ] && [ -n "$PA_PR_BASE_SHA" ]; then
+          BASE="$PA_PR_BASE_SHA"
+        fi
+        ARGS=(--sandbox "$PA_SANDBOX" --fail-under "$PA_FAIL_UNDER")
+        [ -n "$BASE" ] && ARGS+=(--base "$BASE")
+        [ -n "$PA_HEAD" ] && ARGS+=(--head "$PA_HEAD")
+        [ -n "$PA_CLAIMS" ] && ARGS+=(--claims "$PA_CLAIMS")
+        [ -n "$PA_SESSION" ] && ARGS+=(--session "$PA_SESSION")
+        [ "$PA_OFFLINE" = "true" ] && ARGS+=(--offline)
+        [ "$PA_STRICT" = "true" ] && ARGS+=(--strict)
+        [ -n "$PA_BASELINE" ] && ARGS+=(--baseline "$PA_BASELINE")
+        [ "$PA_NO_BASELINE" = "true" ] && ARGS+=(--no-baseline)
+        set +e
+        paranoid verify --format md --output paranoid-report.md "${ARGS[@]}"
+        CODE=$?
+        set -e
+        paranoid verify --format json --output paranoid-report.json "${ARGS[@]}" || true
+        if [ "$PA_SARIF" = "true" ]; then
+          paranoid verify --format sarif --output paranoid-report.sarif "${ARGS[@]}" || true
+        fi
+        echo "score=$(sed -n 's/.*"score": \([0-9]*\).*/\1/p' paranoid-report.json | head -1)" >> "$GITHUB_OUTPUT"
+        echo "verdict=$(sed -n 's/.*"verdict": "\([a-z]*\)".*/\1/p' paranoid-report.json | head -1)" >> "$GITHUB_OUTPUT"
+        echo "exit-code=$CODE" >> "$GITHUB_OUTPUT"
+        cat paranoid-report.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload report
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: paranoid-report
+        path: |
+          paranoid-report.md
+          paranoid-report.json
+          paranoid-report.sarif
+        if-no-files-found: ignore
+
+    - name: Sticky PR comment
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      with:
+        script: |
+          const fs = require('fs');
+          const marker = '<!-- paranoid-report -->';
+          const body = marker + '\n' + fs.readFileSync('paranoid-report.md', 'utf8');
+          const { owner, repo } = context.repo;
+          const issue_number = context.payload.pull_request.number;
+          const comments = await github.rest.issues.listComments({ owner, repo, issue_number });
+          const existing = comments.data.find(c => c.body && c.body.startsWith(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
+
+    - name: Set check status from the verdict
+      shell: bash
+      env:
+        PA_EXIT_CODE: ${{ steps.verify.outputs.exit-code }}
+      run: |
+        if [ "$PA_EXIT_CODE" = "3" ]; then
+          echo "paranoid hit an execution error" >&2
+        fi
+        exit "$PA_EXIT_CODE"

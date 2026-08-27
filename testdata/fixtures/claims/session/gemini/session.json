@@ -1,0 +1,5 @@
+[
+  {"role": "user", "parts": [{"text": "make ping return json"}]},
+  {"role": "model", "parts": [{"text": "I'll update the endpoint now."}]},
+  {"role": "model", "parts": [{"text": "Done. I updated api.py and schemas/response.json so the endpoint returns JSON."}]}
+]

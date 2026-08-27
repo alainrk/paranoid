@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "TI001", "severity": "critical", "category": "test-integrity", "file": "src/__tests__/coupon.js", "line": 0}
+  ]
+}

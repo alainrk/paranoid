@@ -1,0 +1,7 @@
+{
+  "name": "webapp",
+  "dependencies": {
+    "express": "^4.18.2",
+    "fresh-hotness": "^0.0.3"
+  }
+}

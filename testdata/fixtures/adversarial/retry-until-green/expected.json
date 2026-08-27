@@ -1,0 +1,7 @@
+{
+  "findings": [
+    {"rule_id": "TI013", "severity": "medium", "category": "test-integrity", "file": "health_test.go", "line": 6},
+    {"rule_id": "TI014", "severity": "low", "category": "test-integrity", "file": "test_upload.py", "line": 7},
+    {"rule_id": "TI015", "severity": "medium", "category": "test-integrity", "file": "checkout.test.js", "line": 3}
+  ]
+}

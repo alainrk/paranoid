@@ -1,0 +1,7 @@
+{
+  "findings": [
+    {"rule_id": "EH001", "severity": "medium", "category": "error-handling", "file": "payment.go", "line": 4},
+    {"rule_id": "EH003", "severity": "medium", "category": "error-handling", "file": "notify.py", "line": 4},
+    {"rule_id": "EH004", "severity": "medium", "category": "error-handling", "file": "upload.js", "line": 2}
+  ]
+}

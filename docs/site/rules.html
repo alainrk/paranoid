@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, rule reference</title>
+<meta name="description" content="Every rule paranoid can fire: what it detects, why it matters, an example, and known false positives.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 780px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 18px; font-weight: 600; margin: 0; }
+  p { margin: 8px 0; color: var(--ink); max-width: 72ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+
+  /* rule reference specific */
+  .rule-toc {
+    display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 8px;
+    font-family: var(--mono); font-size: 13px;
+  }
+  .rule-toc a {
+    border: 1px solid var(--ink); padding: 5px 12px; text-decoration: none; color: var(--ink);
+  }
+  .rule-toc a:hover { background: var(--ink); color: var(--paper); }
+  .rule {
+    border: 1px solid var(--rule); border-left: 3px solid var(--ink);
+    padding: 16px 20px 18px; margin: 16px 0; scroll-margin-top: 76px;
+  }
+  .rule:target { border-left-color: var(--accent); background: var(--paper-deep); }
+  .rule h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+  .rule-id { font-family: var(--mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.06em; color: var(--paper); background: var(--ink); padding: 2px 7px; }
+  .sev-badge {
+    margin-left: auto; font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 2px 8px; border: 1px solid var(--ink-soft); color: var(--ink-soft);
+  }
+  .sev-critical { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .sev-high { border-color: var(--accent); color: var(--accent); }
+  .sev-medium { border-color: var(--warn); color: var(--warn); }
+  .sev-low, .sev-info { border-color: var(--ink-soft); color: var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html" class="on">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Core</span>
+    <h1>Rule categories and reference</h1>
+    <p class="lede">
+      Every rule paranoid can fire: what it detects, why it matters,
+      an example, and known false positives.
+    </p>
+
+    <div class="card">
+      <p>
+        <strong>This page is generated from <code>docs/rules.md</code></strong>,
+        the file <code>hack/gen-rules-docs</code> writes from the rule
+        registry in <code>internal/rules</code>. <code>docs/rules.md</code>
+        in the repository is the canonical reference; a test fails the
+        build if that file drifts from the registry. This page mirrors
+        its content for the web, and can lag by one commit if this page
+        is not regenerated in the same PR as a rule change. When in
+        doubt, or for the raw markdown, read
+        <a href="https://github.com/alainrk/paranoid/blob/main/docs/rules.md">docs/rules.md</a>
+        or run <code>paranoid rules</code>, which prints from the same
+        registry.
+      </p>
+    </div>
+
+    <p>
+      Go test files and non-test source are analyzed with
+      <code>go/ast</code>, the real Go parser, which is exact. Python
+      and JS/TS files are analyzed with line heuristics driven by
+      pattern tables; those accept imperfection, and each rule below
+      lists its known false positives. When unsure, heuristics prefer
+      staying quiet over firing wrongly. Severities and rule IDs are
+      frozen forever once released.
+    </p>
+
+    <h2>Categories</h2>
+    <div class="rule-toc">
+      <a href="#test-integrity">Test integrity</a>
+      <a href="#dependencies">Dependencies</a>
+      <a href="#error-handling">Error handling</a>
+      <a href="#sandbox">Sandbox</a>
+      <a href="#claims">Claims</a>
+      <a href="#api-surface">API surface</a>
+      <a href="#safety">Safety</a>
+    </div>
+    <p>
+      Seven categories, 42 rules. <a href="sessions-claims.html">Claims</a>
+      and <a href="sandbox.html">sandbox</a> have their own pages with
+      more context; the full text of every rule in every category is
+      below.
+    </p>
+
+    <h2 id="test-integrity">Test integrity (TI)</h2>
+    <div class="rule" id="TI001">
+      <h3><span class="rule-id">TI001</span> test file deleted <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> a test file existed at base and is deleted at head. A rename from a test name to a non-test name (for example <code>calc_test.go</code> to <code>calc.go</code>) counts as a deletion of the tests.</p>
+      <p><strong>Why it matters:</strong> deleting a failing test makes the suite pass without fixing the code, and removes coverage.</p>
+      <p><strong>Example:</strong> the agent's task was to fix <code>Div</code>, and <code>div_test.go</code> is gone at head.</p>
+      <p><strong>Known false positives:</strong> a legitimate refactor that moves all tests into another file. The findings for the deletion stay; review them and move on.</p>
+    </div>
+    <div class="rule" id="TI002">
+      <h3><span class="rule-id">TI002</span> test function removed <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a test, benchmark, or fuzz function existed at base and is gone at head (Go <code>func TestX</code> via go/ast; Python <code>def test_*</code> via line heuristics; JS <code>it(</code>, <code>test(</code>, or <code>describe(</code> blocks via line heuristics). A removal paired with a new test that has a byte-identical body is treated as a rename and does not fire. A test removed inside a removed suite is reported once, for the suite.</p>
+      <p><strong>Why it matters:</strong> removing one failing test makes the suite pass without fixing the code, and is less visible than deleting a file.</p>
+      <p><strong>Example:</strong> base has <code>TestStripComment</code>, head does not.</p>
+      <p><strong>Known false positives:</strong> a rename where the body also changed fires as a removal, because the analyzer cannot prove it is the same test. Splitting one test into several also fires for the old name. For JS, a test title that appears twice in one file can pair the wrong occurrences.</p>
+    </div>
+    <div class="rule" id="TI003">
+      <h3><span class="rule-id">TI003</span> assertion removed from a test <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a test function exists at base and head, but its assertion count went down. Counted as assertions for Go: <code>require.*</code> and <code>assert.*</code> calls, bare <code>t.Error*</code> and <code>t.Fatal*</code> calls, and each <code>if ... { t.Error*/t.Fatal* }</code> block (one per block). For Python: <code>assert</code> statements, <code>self.assert*</code>, <code>pytest.raises</code>. For JS/TS: <code>expect(</code>, <code>assert.*</code>, <code>.should.</code> lines.</p>
+      <p><strong>Why it matters:</strong> the test still exists and still passes, but it checks less than it did.</p>
+      <p><strong>Example:</strong> <code>TestLevel</code> had four checks at base and three at head.</p>
+      <p><strong>Known false positives:</strong> moving assertions into a helper function lowers the count in the test body. Testify's object style (<code>a := assert.New(t); a.Equal(...)</code>) is not counted, so converting to it fires. Merging duplicate assertions fires too. For Python and JS the count is per line, so joining two assertions onto one line fires and a multi-line assertion counts once.</p>
+    </div>
+    <div class="rule" id="TI004">
+      <h3><span class="rule-id">TI004</span> skip or disable added <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> an existing test gains a skip marker it did not have at base; a new test skips itself unconditionally; or a file-level switch disables the whole file. Go: <code>t.Skip</code>, <code>t.Skipf</code>, <code>t.SkipNow</code>, new build constraint lines. Python: <code>@pytest.mark.skip</code>, <code>@pytest.mark.skipif</code>, <code>@unittest.skip*</code>, <code>pytest.skip(</code>, <code>pytestmark = pytest.mark.skip</code>. JS: <code>it.skip</code>, <code>test.skip</code>, <code>describe.skip</code>, <code>xit(</code>, <code>xtest(</code>, <code>xdescribe(</code>.</p>
+      <p><strong>Why it matters:</strong> a skipped test reports as passing infrastructure while checking nothing. A build tag can hide a whole file from <code>go test ./...</code>.</p>
+      <p><strong>Example:</strong> <code>t.Skip("flaky on CI")</code> added as the first line of a test.</p>
+      <p><strong>Known false positives:</strong> a genuinely new integration test that guards itself with a skip inside a condition does not fire; one that skips unconditionally does, even when intended as a placeholder. Legitimate new build tags for integration suites fire and need a human eye.</p>
+    </div>
+    <div class="rule" id="TI005">
+      <h3><span class="rule-id">TI005</span> assertion weakened <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> inside a test that exists at base and head, a strict assertion is replaced by a weaker one (Python <code>assertEqual</code> to <code>assertIn</code> or <code>assertTrue</code>; JS <code>toBe</code> to <code>toBeTruthy</code>, <code>toEqual</code> to <code>toBeDefined</code>), or a numeric tolerance is loosened (Python <code>assertAlmostEqual</code> places lowered or <code>pytest.approx</code> rel/abs raised; JS <code>toBeCloseTo</code> digits lowered). Heuristic: the strong pattern count must drop while the weak pattern count rises within the same test, and tolerances only compare when the test has exactly one tolerance call at base and head.</p>
+      <p><strong>Why it matters:</strong> the test keeps its shape and keeps passing, but it now accepts wrong answers it used to reject.</p>
+      <p><strong>Example:</strong> <code>expect(total).toBe(350)</code> becomes <code>expect(total).toBeTruthy()</code>.</p>
+      <p><strong>Known false positives:</strong> a legitimate rewrite that swaps one assertion style for another in the same edit can pair a dropped strong call with an unrelated new weak call. Currently detected for Python and JS/TS only; the Go analyzer does not implement this rule yet.</p>
+    </div>
+    <div class="rule" id="TI006">
+      <h3><span class="rule-id">TI006</span> tautological assertion introduced <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a new assertion that can never fail. Go: <code>require.True(t, true)</code>, <code>assert.False(t, false)</code>, and <code>Equal</code>/<code>EqualValues</code>/<code>Exactly</code> with two identical arguments. Python: <code>assert True</code>, <code>assert 1 == 1</code>, <code>assert x == x</code>, <code>assertTrue(True)</code>, <code>assertEqual(x, x)</code>. JS: <code>expect(true).toBeTruthy()</code>, <code>expect(x).toBe(x)</code>, <code>assert.ok(true)</code>, <code>assert.equal(x, x)</code>. Tautologies already present at base are not re-reported.</p>
+      <p><strong>Why it matters:</strong> a tautological assertion raises the assertion count without checking anything.</p>
+      <p><strong>Example:</strong> <code>require.Equal(t, 350, total)</code> replaced by <code>require.True(t, true)</code>.</p>
+      <p><strong>Known false positives:</strong> none known for the literal patterns. Comparing a variable to itself can, in rare property-style tests, be a deliberate reflexivity check.</p>
+    </div>
+    <div class="rule" id="TI007">
+      <h3><span class="rule-id">TI007</span> test renamed so the runner ignores it <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a test disappears and reappears under a name or call the runner no longer collects. Go: <code>TestParse</code> to <code>testParse</code> (the lowercase name must not have existed at base). Python: <code>test_x</code> renamed to <code>x</code>, <code>x_test_disabled</code>, or <code>_test_x</code>. JS: a removed <code>it(</code>/<code>test(</code> title reappearing in a plain function call on a line that is not a test start.</p>
+      <p><strong>Why it matters:</strong> the code still reads like a test, but the runner no longer collects it. The effect is the same as removing the test (TI002).</p>
+      <p><strong>Example:</strong> <code>func TestParse(t *testing.T)</code> becomes <code>func testParse(t *testing.T)</code>.</p>
+      <p><strong>Known false positives:</strong> deliberately demoting a test to a named helper during a refactor fires. That is intended; the demotion deserves a look. For JS, reusing a removed test's title as a string argument to any other call fires.</p>
+    </div>
+    <div class="rule" id="TI008">
+      <h3><span class="rule-id">TI008</span> expected-failure marker added <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> an existing test gains an expected-failure marker it did not have at base, or a brand-new test carries one: Python <code>@pytest.mark.xfail</code> or <code>@unittest.expectedFailure</code>, JS <code>it.failing</code> or <code>test.failing</code>.</p>
+      <p><strong>Why it matters:</strong> an expected-failure marker makes a failing test count as passing without fixing anything.</p>
+      <p><strong>Example:</strong> <code>@pytest.mark.xfail</code> added above a test that started failing after the agent's change.</p>
+      <p><strong>Known false positives:</strong> marking a known upstream bug as xfail with a tracking issue is legitimate practice and still fires. Currently detected for Python and JS/TS only; the Go analyzer does not implement this rule yet.</p>
+    </div>
+    <div class="rule" id="TI009">
+      <h3><span class="rule-id">TI009</span> test configuration weakened <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> changes that weaken how the test suite runs, in any ecosystem: a CI workflow step gains <code>continue-on-error: true</code>; a test invocation disappears from a workflow or Makefile (including when the whole file is deleted); a coverage gate is lowered (<code>--cov-fail-under</code>, <code>fail_under</code>, jest <code>coverageThreshold</code> numbers); pytest <code>testpaths</code> loses entries or <code>addopts</code> gains <code>--ignore</code>; jest <code>testPathIgnorePatterns</code> grows. Watched files: <code>pytest.ini</code>, <code>pyproject.toml</code>, <code>jest.config.*</code>, <code>vitest.config.*</code>, <code>Makefile</code>, and <code>.github/workflows/*</code>.</p>
+      <p><strong>Why it matters:</strong> a configuration change can stop the suite from running, gating, or counting while every test file stays intact.</p>
+      <p><strong>Example:</strong> <code>continue-on-error: true</code> added to the test job of a GitHub workflow.</p>
+      <p><strong>Known false positives:</strong> renaming a Makefile target that wraps the test command fires as a removed invocation, and splitting a workflow into several files fires on the old file. Thresholds compare only when exactly one value appears at base and head. Brand-new configuration files are not checked.</p>
+    </div>
+    <div class="rule" id="TI010">
+      <h3><span class="rule-id">TI010</span> assertion count dropped sharply <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a modified test file whose total assertion count across all tests dropped by more than 20 percent. One finding per file, on top of any per-test findings.</p>
+      <p><strong>Why it matters:</strong> many small removals can each look defensible while the file as a whole loses most of its checks. This rule measures the aggregate.</p>
+      <p><strong>Example:</strong> a file went from 10 assertions to 6.</p>
+      <p><strong>Known false positives:</strong> a large legitimate cleanup of redundant assertions fires. Small files hit the threshold easily, since one assertion can be a large share of the total.</p>
+    </div>
+    <div class="rule" id="TI012">
+      <h3><span class="rule-id">TI012</span> new mocking in an existing test file <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a modified test file gains a mocking call it did not have at base: Python <code>mock.patch</code> or <code>monkeypatch</code>, JS <code>jest.mock(</code> or <code>vi.mock(</code>. Brand-new test files do not fire.</p>
+      <p><strong>Why it matters:</strong> mocking a call that used to run for real can hide the exact behavior the task was supposed to fix.</p>
+      <p><strong>Example:</strong> <code>jest.mock('./api')</code> added at the top of a test file whose tests previously hit the real module.</p>
+      <p><strong>Known false positives:</strong> legitimate new mocking of slow or flaky externals (network, clocks) fires too; the finding asks for a look, not a revert. Environment hygiene like <code>monkeypatch.delenv</code> matches the pattern without stubbing anything (seen on real repos; documented in docs/precision-notes.md). Currently detected for Python and JS/TS only; the Go analyzer does not implement this rule yet.</p>
+    </div>
+    <div class="rule" id="TI013">
+      <h3><span class="rule-id">TI013</span> retry added to a test <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a test gains a mechanism that retries it automatically on failure: Python <code>@pytest.mark.flaky</code> or a bare <code>@flaky</code> decorator; JS <code>jest.retryTimes(</code>, <code>test.retry(</code>, or <code>it.retry(</code>; a <code>reruns</code> value or <code>--reruns</code> flag added to pytest configuration or a Makefile/CI command; a <code>retry:</code> setting added to vitest configuration; or, for Go, a new <code>for</code> loop (not a <code>range</code> loop) wrapping an existing test's assertions, matched when the loop did not exist at base and its body calls <code>require.*</code>, <code>assert.*</code>, or a <code>*testing.T</code> failure method.</p>
+      <p><strong>Why it matters:</strong> a retry lets a flaky assertion pass on a later attempt, so the underlying bug is masked instead of fixed.</p>
+      <p><strong>Example:</strong> <code>@pytest.mark.flaky(reruns=3)</code> added above a test that started failing.</p>
+      <p><strong>Known false positives:</strong> a genuinely flaky external-service test annotated during triage fires here too; the finding is a reason to look, not a verdict. For Go, rewriting a single test case into a manual index-based loop over several cases (<code>for i := 0; i &lt; len(cases); i++</code> instead of <code>for _, tc := range cases</code>) looks identical to a retry wrap and fires; use a range loop for genuine table-driven refactors to stay quiet.</p>
+    </div>
+    <div class="rule" id="TI014">
+      <h3><span class="rule-id">TI014</span> new sleep inside a test <span class="sev-badge sev-low">low</span></h3>
+      <p><strong>What it detects:</strong> a test file gains a call that pauses execution instead of waiting on a real condition: Go <code>time.Sleep</code>, Python <code>time.sleep(</code> or <code>asyncio.sleep(</code>, JS <code>setTimeout(</code> (which also covers the <code>await new Promise(r =&gt; setTimeout(...))</code> idiom, since the text still contains <code>setTimeout(</code>). Fires in brand-new test files and tests, and the first time an existing test gains a sleep it did not have at base.</p>
+      <p><strong>Why it matters:</strong> a sleep hides a race or an ordering bug behind a fixed delay; the test passes on a fast machine and stays fragile everywhere else.</p>
+      <p><strong>Example:</strong> <code>time.Sleep(500 * time.Millisecond)</code> added before an assertion that used to run immediately.</p>
+      <p><strong>Known false positives:</strong> sleeps in genuine integration or load tests that need to wait on real external timing fire too and are usually legitimate; the severity is low for this reason. For Go, only the first sleep added to a test is detected; later sleeps in the same test add no further findings.</p>
+    </div>
+    <div class="rule" id="TI015">
+      <h3><span class="rule-id">TI015</span> test timeout raised beyond threefold <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a per-test or per-suite timeout value more than tripled between base and head: Python <code>@pytest.mark.timeout(N)</code> per test, or a <code>timeout =</code> ini setting in pytest.ini/pyproject.toml; JS/TS <code>this.timeout(N)</code> (mocha) per test, or a <code>testTimeout:</code> setting in jest.config.*/vitest.config.*. The raise factor (3x) is a named constant shared by the test-file and configuration checks.</p>
+      <p><strong>Why it matters:</strong> a timeout stretched far enough turns a hang or a slow regression into a pass; tripling is a threshold generous enough to allow normal tuning while still catching a real stretch.</p>
+      <p><strong>Example:</strong> <code>@pytest.mark.timeout(5)</code> becomes <code>@pytest.mark.timeout(30)</code>.</p>
+      <p><strong>Known false positives:</strong> a legitimate new, heavier test can need more than 3x the old budget; the threshold is a heuristic, not proof. Go has no per-test timeout setting in source (<code>go test -timeout</code> governs the whole run from the command line as a duration string, not a plain number) and is not covered by this rule; see docs/precision-notes.md.</p>
+    </div>
+
+    <h2 id="dependencies">Dependencies (DEP)</h2>
+    <div class="rule" id="DEP001">
+      <h3><span class="rule-id">DEP001</span> dependency does not exist <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> a package newly added to a declaring manifest is not found in its registry (npm, PyPI, the Go module proxy, or crates.io). Lookups are cached on disk for 24 hours and skipped entirely with --offline.</p>
+      <p><strong>Why it matters:</strong> agents can invent plausible package names. A nonexistent dependency breaks the build, and the unclaimed name can later be registered by an attacker.</p>
+      <p><strong>Example:</strong> <code>requests-toolkit-pro</code> added to requirements.txt; PyPI has no such project.</p>
+      <p><strong>Known false positives:</strong> private registry packages and internal mirrors are unknown to the public registries and fire. Use --offline in setups where public lookups make no sense.</p>
+    </div>
+    <div class="rule" id="DEP002">
+      <h3><span class="rule-id">DEP002</span> dependency is very new <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a package newly added to a declaring manifest had its first release less than 30 days ago. First-release time comes from the registry (earliest npm time entry, earliest PyPI upload, earliest tagged Go version, crates.io created_at).</p>
+      <p><strong>Why it matters:</strong> freshly registered names are the main vehicle for typosquatting and dependency confusion attacks.</p>
+      <p><strong>Example:</strong> a package published 5 days ago appears in package.json.</p>
+      <p><strong>Known false positives:</strong> genuinely new, legitimate packages fire. The finding asks for a look at the package, not an automatic revert.</p>
+    </div>
+    <div class="rule" id="DEP003">
+      <h3><span class="rule-id">DEP003</span> dependency has very low adoption <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a package newly added to a declaring manifest has very low adoption: fewer than 500 weekly downloads on npm or fewer than 1000 total downloads on crates.io. PyPI and the Go proxy expose no cheap adoption signal, so those ecosystems are reported as a skipped check instead.</p>
+      <p><strong>Why it matters:</strong> a near-unused package with a plausible name is a common shape for squatted or hallucinated dependencies.</p>
+      <p><strong>Example:</strong> a package with 12 weekly downloads appears in package.json.</p>
+      <p><strong>Known false positives:</strong> young niche packages and scoped internal packages published publicly fire despite being intentional.</p>
+    </div>
+    <div class="rule" id="DEP004">
+      <h3><span class="rule-id">DEP004</span> dependency name looks like a typosquat <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a package newly added to a declaring manifest has a name within Damerau-Levenshtein distance 1 to 2 of a bundled top-1000 popular package list for its ecosystem (npm, PyPI, crates; there is no popularity source for Go modules). Exact matches with the list and names shorter than 4 characters are skipped. Regenerate the lists with hack/gen-popular-lists.</p>
+      <p><strong>Why it matters:</strong> a typosquatted name differs from a popular package by one or two edits and installs different code.</p>
+      <p><strong>Example:</strong> <code>expres</code> or <code>requets</code> instead of <code>express</code> or <code>requests</code>.</p>
+      <p><strong>Known false positives:</strong> legitimate short names can sit close to a popular name (<code>redis-om</code> vs <code>redis-orm</code> style collisions). The distance check knows nothing about intent; it only flags the similarity.</p>
+    </div>
+    <div class="rule" id="DEP005">
+      <h3><span class="rule-id">DEP005</span> import and manifest disagree <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> either half of a mismatch between code and manifests: new code imports a package that no manifest at head declares, or a newly added entry in a declaring manifest (<code>package.json</code>, <code>requirements*.txt</code>, <code>pyproject.toml</code>, <code>go.mod</code>, <code>Cargo.toml</code>) is referenced nowhere in the tree. Lockfile entries count as declarations but are not checked for use, since transitive packages are never imported directly.</p>
+      <p><strong>Why it matters:</strong> a hallucinated dependency often appears as an import with no manifest entry, or a manifest entry no code uses.</p>
+      <p><strong>Example:</strong> <code>import requests_toolkit</code> added with no matching entry in <code>requirements.txt</code>.</p>
+      <p><strong>Known false positives:</strong> Python distribution names can differ from module names; a short alias list covers the common cases (<code>pyyaml</code>, <code>pillow</code>, <code>scikit-learn</code>, and friends) and everything else may mismatch. Dependencies used only through plugins, CLI entry points, or configuration are flagged as never imported.</p>
+    </div>
+
+    <h2 id="error-handling">Error handling (EH)</h2>
+    <div class="rule" id="EH001">
+      <h3><span class="rule-id">EH001</span> error discarded that used to be checked <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> in a changed Go function, a call result assigned to <code>err</code> and checked at base is now discarded (<code>_ = call()</code> or <code>_, _ = call()</code>) at head with the exact same call text; or a brand new statement discards a two-value <code>(value, error)</code> result (<code>_, _ = call()</code>) that has no counterpart at base at all. Detected with go/parser on the base and head content of each changed function; single-value new discards are not flagged, only the checked-then-discarded case and new two-value discards.</p>
+      <p><strong>Why it matters:</strong> an ignored error fails silently later, somewhere harder to trace. Turning a checked error into a discarded one is a quiet way to make a failing path stop failing.</p>
+      <p><strong>Example:</strong> <code>err := f.Close(); if err != nil { return err }</code> becomes <code>_ = f.Close()</code>.</p>
+      <p><strong>Known false positives:</strong> a call reformatted with different argument text pairs as unrelated, so a real weakening can go undetected (false negative, not a false positive). A brand new <code>_ = call()</code> with a single discarded value never fires by itself; only a new two-value discard or a base-checked call turned into a discard does. A new multi-value discard directly inside a <code>defer func() { ... }()</code> cleanup block is excluded too, since best-effort cleanup on a deferred close is a common, legitimate pattern. Discarding an already-checked identifier directly (<code>_ = err</code>) is not detected, only discarding the call result itself.</p>
+    </div>
+    <div class="rule" id="EH002">
+      <h3><span class="rule-id">EH002</span> new empty catch block <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a JS/TS <code>catch</code> block that is empty or contains only line comments, and was not present at base (matched by the catch parameter name and how many empty catches with that name already existed).</p>
+      <p><strong>Why it matters:</strong> an empty catch block swallows the exception completely; nothing is logged, handled, or reported, and the failure vanishes.</p>
+      <p><strong>Example:</strong> <code>} catch (e) {}</code> added around a call that used to let its error propagate.</p>
+      <p><strong>Known false positives:</strong> a block comment (<code>/* ... */</code>) inside the catch counts as code by this heuristic's line-comment-only check, so such a catch is treated as non-empty and does not fire (a false negative, not a positive). Reformatting an existing empty catch under a different parameter name can look new.</p>
+    </div>
+    <div class="rule" id="EH003">
+      <h3><span class="rule-id">EH003</span> new except block that only passes <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a Python <code>except:</code> block (bare, or naming an exception type, with or without <code>as</code>) whose body is only <code>pass</code> or <code>...</code>, matched by the exact except header text against the same header at base. An except block that logs, re-raises, or does anything else does not count.</p>
+      <p><strong>Why it matters:</strong> <code>except Exception: pass</code> is the classic silent-failure pattern: the error is caught and thrown away with no trace.</p>
+      <p><strong>Example:</strong> an <code>except requests.RequestException:</code> block whose body is just <code>pass</code>, added around a network call.</p>
+      <p><strong>Known false positives:</strong> reformatting an except header (adding <code>as e</code>, reordering the exception tuple) changes the header text and can look new even when the block itself is unchanged.</p>
+    </div>
+    <div class="rule" id="EH004">
+      <h3><span class="rule-id">EH004</span> no-op promise catch handler <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a new <code>.catch(() =&gt; {})</code> or <code>.catch(function () {})</code> call: a promise rejection handler with an empty body, matched against the same normalized text at base.</p>
+      <p><strong>Why it matters:</strong> a no-op catch handler is the promise-chain version of an empty catch block: the rejection is acknowledged and then thrown away.</p>
+      <p><strong>Example:</strong> <code>fetchData().catch(() =&gt; {})</code> added where the rejection used to propagate.</p>
+      <p><strong>Known false positives:</strong> a handler whose body is a single comment reads as empty by whitespace but the regex requires literally empty braces, so a commented handler does not fire (false negative). Multi-line handlers with unusual formatting can be missed.</p>
+    </div>
+    <div class="rule" id="EH005">
+      <h3><span class="rule-id">EH005</span> error path now only logs and continues <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> an error-handling block that existed at base and head, matched by its condition or header (Go: the same <code>if x != nil</code> condition text; Python: the same except header text; JS/TS: the same catch parameter name), used to leave the function early (Go <code>return</code>, Python <code>raise</code>, JS/TS <code>throw</code>) at base and at head no longer does, while gaining a log call in its place. Go is precise via go/parser; Python and JS/TS use line heuristics over except and catch blocks.</p>
+      <p><strong>Why it matters:</strong> the block still logs the error, but the caller no longer stops on a failure it used to stop for.</p>
+      <p><strong>Example:</strong> <code>if err != nil { return err }</code> becomes <code>if err != nil { log.Println(err) }</code> with no return.</p>
+      <p><strong>Known false positives:</strong> a legitimate refactor that turns a fatal error into a recoverable one and logs it on purpose fires here too; the finding is a reason to look, not proof of intent. Matching by condition or header text pairs blocks positionally when a function has more than one with the same text, which can mispair in rare cases.</p>
+    </div>
+
+    <h2 id="sandbox">Sandbox (SBX)</h2>
+    <p>See <a href="sandbox.html">Sandbox &amp; coverage</a> for how the clean room itself works.</p>
+    <div class="rule" id="SBX001">
+      <h3><span class="rule-id">SBX001</span> test suite fails in the clean room <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> the detected test suite exits non-zero when rerun in a container from a fresh export of the head tree: dependencies installed in a prep step with the network on, then tests with <code>--network=none</code>. Suites: <code>go test ./...</code> when go.mod exists, pytest or unittest for Python, the package.json test script for JS/TS.</p>
+      <p><strong>Why it matters:</strong> a suite can pass locally because of uncommitted files, cached state, or network access. The clean room removes those.</p>
+      <p><strong>Example:</strong> tests read a local file the agent never committed; they pass in the working tree and fail in the container.</p>
+      <p><strong>Known false positives:</strong> suites that genuinely need network access during tests fail in the clean room by design. Flaky tests fail here like everywhere else.</p>
+    </div>
+    <div class="rule" id="SBX002">
+      <h3><span class="rule-id">SBX002</span> clean run skipped freshly disabled tests <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> the clean-room run reports skipped tests while the diff added skip markers (TI004 findings). The two signals together say the suite went green by not running things.</p>
+      <p><strong>Why it matters:</strong> a skipped test counts as not failing. Skips added in the same change that claims success remove exactly the checks that could have failed.</p>
+      <p><strong>Example:</strong> the clean run prints <code>2 skipped</code> and the diff added two <code>@pytest.mark.skip</code> decorators.</p>
+      <p><strong>Known false positives:</strong> pre-existing skips plus one unrelated new marker fire even when the skipped tests are old. Counts come from suite output and are only available for go test and pytest.</p>
+    </div>
+    <div class="rule" id="SBX003">
+      <h3><span class="rule-id">SBX003</span> fewer tests ran at head than at base <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> with the <code>--compare-base</code> flag, the clean room runs the suite at base and at head and compares how many tests executed; fewer at head fires. Counts are available for go test and pytest only.</p>
+      <p><strong>Why it matters:</strong> a shrinking test count is the aggregate symptom of deleted, skipped, and hidden tests.</p>
+      <p><strong>Example:</strong> base executed 120 tests, head executed 97.</p>
+      <p><strong>Known false positives:</strong> legitimate test consolidation reduces the count. The comparison costs a second sandbox run, which is why it hides behind a flag.</p>
+    </div>
+    <div class="rule" id="SBX004">
+      <h3><span class="rule-id">SBX004</span> clean-room check did not run <span class="sev-badge sev-info">info</span></h3>
+      <p><strong>What it detects:</strong> the sandbox could not run: no working docker or podman, no detectable test command, a failing dependency preparation, or a timeout. Always surfaced, never silent. An explicit <code>--sandbox none</code> records a skipped check without this finding, since opting out is not a surprise.</p>
+      <p><strong>Why it matters:</strong> a skipped verification is not a passed verification. The report must say what was not checked.</p>
+      <p><strong>Example:</strong> verify runs on a machine without docker; the report carries this finding and lists the check as skipped.</p>
+      <p><strong>Known false positives:</strong> none; the finding states a fact about coverage and costs no score points.</p>
+    </div>
+    <div class="rule" id="SBX005">
+      <h3><span class="rule-id">SBX005</span> total coverage dropped beyond the threshold <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> with <code>--compare-base</code>, the clean room collects total test coverage at base and at head and compares them: Go always (<code>go test -coverprofile</code> plus <code>go tool cover -func</code>), Python only when pytest-cov is already importable in the prepared environment (never installed by this check), and JS/TS only when the test script names jest or vitest (<code>--coverage --coverageReporters=json-summary</code>, read from <code>coverage-summary.json</code>). Fires when head coverage is more than 5.0 percentage points below base coverage. Coverage collection never changes the SBX001 to SBX004 pass/fail outcome; a suite whose coverage tooling is unavailable simply reports coverage as unavailable, and this rule stays quiet.</p>
+      <p><strong>Why it matters:</strong> a shrinking coverage number is a broader, harder-to-fake signal than any single deleted test: it catches code that lost its tests along with several other honest reasons to look.</p>
+      <p><strong>Example:</strong> base coverage is 82.0%, head coverage is 74.0%, an 8 point drop.</p>
+      <p><strong>Known false positives:</strong> removing dead code lowers the denominator and can raise or lower the percentage either way. A large legitimate refactor that trades tests for integration coverage elsewhere can also cross the threshold. Coverage is only available for the suites and tools listed above; everything else reports coverage as unavailable and this rule never fires for them.</p>
+    </div>
+
+    <h2 id="claims">Claims (CLM)</h2>
+    <p>See <a href="sessions-claims.html">Sessions &amp; claims</a> for where claims text comes from and which agent session formats are supported.</p>
+    <div class="rule" id="CLM001">
+      <h3><span class="rule-id">CLM001</span> claimed file is not in the diff <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a path-like token on a claim line with a change verb (added, created, modified, and friends) that matches no changed file, by exact path, suffix, or basename. Claims come from --claims, --session (Claude Code, Codex CLI, Gemini CLI, Aider, or Cursor, auto-detected; --claude-session is an alias of the same flag), or the base..head commit messages as a weak fallback.</p>
+      <p><strong>Why it matters:</strong> a summary that names a file the diff never touches is a direct, checkable mismatch between the claims and the change.</p>
+      <p><strong>Example:</strong> the summary says <code>updated auth/middleware.go</code> but the diff only touches <code>auth/routes.go</code>.</p>
+      <p><strong>Known false positives:</strong> prose can mention files as context rather than as claims ("looked at config.yaml" with an unrelated change verb on the same line). Only tokens with real file extensions are checked.</p>
+    </div>
+    <div class="rule" id="CLM002">
+      <h3><span class="rule-id">CLM002</span> claims tests pass but the clean room failed <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> the claims text contains a test-outcome claim ("all tests pass", "N tests passed", "tests are green") while the clean-room rerun of the suite failed (SBX001). Fires only when the sandbox actually ran.</p>
+      <p><strong>Why it matters:</strong> a passing-tests claim over a failing clean-room run is a direct contradiction between the summary and the test result.</p>
+      <p><strong>Example:</strong> the summary says "all 14 tests pass" and the clean room exits 1.</p>
+      <p><strong>Known false positives:</strong> a suite that fails in the clean room for environment reasons (network-dependent tests) makes an honest claim look false; check the SBX001 evidence.</p>
+    </div>
+    <div class="rule" id="CLM003">
+      <h3><span class="rule-id">CLM003</span> action claim with no evidence in the diff <span class="sev-badge sev-low">low</span></h3>
+      <p><strong>What it detects:</strong> a claim line starting with an action verb whose object phrase contains a concrete identifier (camelCase, snake_case, or backticked) that appears nowhere in the changed files at head. Deliberately conservative: lines without a concrete identifier are never checked.</p>
+      <p><strong>Why it matters:</strong> an identifier that appears nowhere in the changed files suggests the claimed work was not done, or was done under another name.</p>
+      <p><strong>Example:</strong> "Implemented retryWithBackoff" with no changed file mentioning retryWithBackoff.</p>
+      <p><strong>Known false positives:</strong> renamed or described-from-memory identifiers fire (the agent implemented the thing under another name). This is why the severity is low.</p>
+    </div>
+    <div class="rule" id="CLM004">
+      <h3><span class="rule-id">CLM004</span> claimed more new tests than the diff has <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> the claims text says "added N tests" and the diff contains fewer than N new test declarations, counted per language with line heuristics (<code>func TestX</code>, <code>def test_x</code>, <code>it(</code>/<code>test(</code>).</p>
+      <p><strong>Why it matters:</strong> a claimed test count can be checked directly against the diff.</p>
+      <p><strong>Example:</strong> "added 5 tests" while the diff adds two.</p>
+      <p><strong>Known false positives:</strong> table-driven tests add many cases inside one function and count as one; a claim counting cases fires even when honest.</p>
+    </div>
+    <div class="rule" id="CLM005">
+      <h3><span class="rule-id">CLM005</span> diff touches far more files than the claims describe <span class="sev-badge sev-low">low</span></h3>
+      <p><strong>What it detects:</strong> the diff touches at least 6 files (lockfiles and manifests the deps package already knows about, such as package-lock.json, yarn.lock, pnpm-lock.yaml, and go.mod, do not count either way) and more than 60% of them are neither a path the claims mention nor a file containing an identifier the claims name. Both numbers (6 files, 60%) are named constants in internal/analyze/claims/check.go, chosen so a normal one- or two-file spillover (a shared helper, a call site) stays quiet while a diff that is mostly unrelated to the claimed change still fires. Evidence lists up to 5 of the unreferenced files.</p>
+      <p><strong>Why it matters:</strong> a diff that touches many files the claims never mention is a mismatch between the described scope and the actual scope. This rule measures that mismatch.</p>
+      <p><strong>Example:</strong> the claims say "fixed a null-pointer bug in internal/calc/calc.go", and the diff also touches 11 other files in unrelated packages that the claims never mention.</p>
+      <p><strong>Known false positives:</strong> mechanical renames and formatting sweeps touch many files for a reason the claims text never spells out one by one; a claim that describes the sweep in general terms ("reformatted the api package") without naming every file still counts those files as unreferenced. The same applies to a genuine one-line fix that also runs a repo-wide codemod alongside it: real work, technically true claims, still flagged. Low severity reflects this.</p>
+    </div>
+
+    <h2 id="api-surface">API surface (AS)</h2>
+    <div class="rule" id="AS001">
+      <h3><span class="rule-id">AS001</span> public symbol removed while claims say fix or feature <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a public symbol (Go: an exported top-level func, method, type, const, or var; Python: a top-level def or class without a leading underscore, plus __all__ entries; JS/TS: an export statement) existed at base and is gone at head, in a diff whose claims text expresses fix or feature intent (an action claim using the verb added, implemented, fixed, created, or updated). Fires only when claims are present at all; runs after cross-checking the whole head tree with git grep, so a symbol that moved to another file does not fire.</p>
+      <p><strong>Why it matters:</strong> a suite can pass because the feature it tested no longer exists. Removing the code removes the failure without fixing it.</p>
+      <p><strong>Example:</strong> the claims say "fixed the retry logic", and the diff deletes the exported RetryWithBackoff function along with its test.</p>
+      <p><strong>Known false positives:</strong> heavy on false positives by nature: a legitimate rename the git-grep check cannot see, a deliberate deprecation removal that genuinely belongs in this change, or an unrelated claim elsewhere in the same summary that happens to use a fix/feature verb while this particular removal is unrelated cleanup. Treat every finding as a reason to look, not a verdict. Python and JS/TS extraction is line-based and misses destructuring exports, multi-line export lists, and multi-line module.exports objects.</p>
+    </div>
+    <div class="rule" id="AS002">
+      <h3><span class="rule-id">AS002</span> claimed-fixed identifier deleted, not changed <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> an action claim's concrete identifier (the same extraction CLM003 uses: a camelCase, snake_case, or backticked name in the object phrase of a fix/implement/add/create/update claim) matches the name of a public symbol that existed at base and is gone at head, after the same whole-head-tree git grep cross-check AS001 uses to rule out a move.</p>
+      <p><strong>Why it matters:</strong> the claims name the exact identifier they say was fixed, and that identifier's defining code was deleted rather than changed. This is the identifier-tied variant of AS001.</p>
+      <p><strong>Example:</strong> the claims say "fixed parseHunkRange", and parseHunkRange no longer exists anywhere in the head tree.</p>
+      <p><strong>Known false positives:</strong> the same identifier-matching weakness CLM003 already documents: a renamed or described-from-memory identifier can share a name with an unrelated removed symbol by coincidence in a large diff. Also inherits every AS001 false positive around moves the git-grep check cannot see.</p>
+    </div>
+
+    <h2 id="safety">Safety (SF)</h2>
+    <div class="card">
+      <p>
+        Pattern-based, not a security scanner. SF001 to SF006 match
+        specific, well-known text shapes and nothing else. A
+        vulnerability introduced any other way is invisible to this
+        category. Never read a passing safety check as "this change is
+        secure".
+      </p>
+    </div>
+    <div class="rule" id="SF001">
+      <h3><span class="rule-id">SF001</span> TLS verification newly disabled <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> an added line matches a known way to switch off TLS certificate verification: Go <code>InsecureSkipVerify: true</code>, Python <code>verify=False</code> on a requests or httpx call, JS/TS <code>rejectUnauthorized: false</code>, the <code>NODE_TLS_REJECT_UNAUTHORIZED=0</code> environment override, or <code>curl -k</code> / <code>--insecure</code> in a script. Base and head are compared as line multisets, so a line simply moved within the same file does not count as newly added. Detected test files and documentation prose (.md, .rst, .adoc, .txt, and friends) are skipped entirely.</p>
+      <p><strong>Why it matters:</strong> disabling certificate verification removes protection against connection interception, and the change is small enough to pass review as a local development fix.</p>
+      <p><strong>Example:</strong> <code>requests.get(url, verify=False)</code> added around a call that used to verify certificates.</p>
+      <p><strong>Known false positives:</strong> literal text matching, not a security scanner: a genuine local development helper, a check gated behind an environment variable, or a variable that happens to be named verify for an unrelated reason all fire the same as a real regression. <code>curl -k</code> also matches a -k flag on an unrelated tool that happens to share the line. A comment or string literal that quotes one of these patterns by name fires too; prose files are excluded for this reason, but source code comments are not.</p>
+    </div>
+    <div class="rule" id="SF002">
+      <h3><span class="rule-id">SF002</span> authentication check removed <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a removed line matches a known authentication guard: Python <code>@login_required</code> or <code>@requires_auth</code>, an <code>authenticate(</code> call, JS <code>requireAuth</code>, <code>passport.authenticate(</code>, or a <code>.use(...)</code> middleware registration whose argument looks like an auth check. Compared as line multisets between base and head, so a line simply moved within the same file never fires. When the exact same line text is added somewhere else in the whole diff, the finding is suppressed rather than downgraded (the rule registry has no mechanism for one rule to fire at two severities).</p>
+      <p><strong>Why it matters:</strong> removing an authentication check makes protected code reachable without authorization, and in a large diff it can look like unrelated cleanup.</p>
+      <p><strong>Example:</strong> <code>@login_required</code> removed from above a view function that used to require it.</p>
+      <p><strong>Known false positives:</strong> pattern-based, not a security scanner: a genuine authorization refactor that renames the decorator, moves the check into a shared base class, or intentionally opens a route up all fire here with no way to tell intent from the line text alone.</p>
+    </div>
+    <div class="rule" id="SF003">
+      <h3><span class="rule-id">SF003</span> .gitignore hides a tracked path <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a newly added line in a .gitignore file, translated into a glob (a leading / anchor, a trailing / directory marker, *, ?, and **/ segments; negated ! entries and comments are skipped), matches at least one path git currently tracks, checked with the .gitignore file's own directory as the pattern's root, the same way git itself scopes a nested .gitignore.</p>
+      <p><strong>Why it matters:</strong> adding a tracked path to .gitignore does not untrack it, but it hides the file from git status and staged diffs, so later changes to it can go unreviewed.</p>
+      <p><strong>Example:</strong> <code>.env</code> added to .gitignore while <code>.env</code> is still tracked from an earlier commit.</p>
+      <p><strong>Known false positives:</strong> pattern-based, not a security scanner: the glob translation is a simplified subset of real gitignore syntax. A pattern meant only to keep future files out that happens to also match an old tracked file by coincidence fires the same as a deliberate hide.</p>
+    </div>
+    <div class="rule" id="SF004">
+      <h3><span class="rule-id">SF004</span> git hook or hook configuration changed <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> any add, modify, or delete under <code>.husky/</code>, to <code>.pre-commit-config.yaml</code>, or to <code>lefthook.yml</code>; or an added line that sets <code>core.hooksPath</code>, matched as newly added so an unrelated edit to a file that already set it does not fire again. The core.hooksPath text check skips documentation prose; the hook-file check has no such exclusion.</p>
+      <p><strong>Why it matters:</strong> hooks are the last check that runs before a commit or push leaves the machine. Disabling or rewriting one removes a guard without touching the code the guard exists to check.</p>
+      <p><strong>Example:</strong> <code>.husky/pre-commit</code> deleted, or its one line replaced with <code>true</code>.</p>
+      <p><strong>Known false positives:</strong> pattern-based, not a security scanner: any legitimate hook maintenance, a brand-new hook, or reordered hook steps fires here too, since the rule cannot tell a weakening from routine upkeep.</p>
+    </div>
+    <div class="rule" id="SF005">
+      <h3><span class="rule-id">SF005</span> CI permission widening <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> an added line in a <code>.github/workflows/*.yml</code> or <code>*.yaml</code> file matches <code>permissions: write-all</code>, a new <code>contents: write</code>, a new <code>pull_request_target:</code> trigger, or <code>secrets: inherit</code>, each firing only when the exact line text was not already present anywhere in the file at base.</p>
+      <p><strong>Why it matters:</strong> <code>pull_request_target</code> plus broad write permissions is the standard shape of a GitHub Actions supply-chain attack: a workflow that runs with repository write access against untrusted pull request input.</p>
+      <p><strong>Example:</strong> <code>permissions: write-all</code> added to a workflow that used to declare <code>contents: read</code>.</p>
+      <p><strong>Known false positives:</strong> pattern-based, not a security scanner: a legitimate need for broader permissions (a release workflow, a bot that must comment) fires here with no way to tell intent from the line text.</p>
+    </div>
+    <div class="rule" id="SF006">
+      <h3><span class="rule-id">SF006</span> paranoid control file tampered with <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> any add, modify, or delete of <code>.paranoid-baseline.json</code>, the suppression file verify auto-loads; or, in a hook configuration file (a Claude Code <code>settings.json</code> or <code>settings.local.json</code> under <code>.claude/</code>, or this project's own <code>.pre-commit-hooks.yaml</code> definition), a line that names paranoid newly missing at head, or the whole file deleted while it still named paranoid at base. Compared the same way every other SF rule compares lines: base and head as multisets, so a line simply moved within the same file never fires.</p>
+      <p><strong>Why it matters:</strong> instead of fixing findings, an agent can edit the file that suppresses them or remove the hook that runs the check. Both changes look like routine config maintenance in a diff.</p>
+      <p><strong>Example:</strong> the diff adds an entry to <code>.paranoid-baseline.json</code> that suppresses a finding which would otherwise fail the run, or the Stop hook entry that runs <code>paranoid verify</code> is deleted from <code>.claude/settings.json</code>.</p>
+      <p><strong>Known false positives:</strong> fires on every legitimate use of these files too: re-running <code>paranoid baseline</code> to refresh the snapshot, hand-adding a reviewed suppression with a reason, or ordinary hook maintenance all trigger this rule exactly like a deliberate attempt to suppress a finding. Treat it as a standing instruction to review any change to these files, never as a verdict on intent. The hook-configuration half only recognizes <code>.claude/settings.json</code>, <code>.claude/settings.local.json</code>, and this project's own <code>.pre-commit-hooks.yaml</code>; a hook wired through any other mechanism is invisible to this rule.</p>
+    </div>
+
+    <hr>
+    <p>
+      Full text, including a few extra false-positive notes trimmed
+      here for length, is always in
+      <a href="https://github.com/alainrk/paranoid/blob/main/docs/rules.md">docs/rules.md</a>.
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

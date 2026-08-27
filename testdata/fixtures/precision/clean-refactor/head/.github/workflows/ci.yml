@@ -1,0 +1,11 @@
+name: ci
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+      - run: go test -race ./...
+      - run: pytest -q
+      - run: npm test

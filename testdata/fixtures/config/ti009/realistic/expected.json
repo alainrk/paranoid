@@ -1,0 +1,6 @@
+{
+  "findings": [
+    {"rule_id": "TI009", "severity": "critical", "category": "test-integrity", "file": ".github/workflows/ci.yml", "line": 0},
+    {"rule_id": "TI009", "severity": "critical", "category": "test-integrity", "file": "pytest.ini", "line": 2}
+  ]
+}

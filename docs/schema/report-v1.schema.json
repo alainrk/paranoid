@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/alainrk/paranoid/docs/schema/report-v1.schema.json",
+  "title": "paranoid verify report, schema version 7",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "score",
+    "verdict",
+    "findings",
+    "checks_run",
+    "checks_skipped",
+    "coverage",
+    "suppressed",
+    "meta"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 7
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "verdict": {
+      "enum": ["pass", "warn", "fail"]
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "checks_run": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "checks_skipped": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/skipped_check" }
+    },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "suppressed": { "$ref": "#/$defs/suppressed" },
+    "meta": { "$ref": "#/$defs/meta" }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "severity",
+        "category",
+        "file",
+        "line",
+        "evidence",
+        "message",
+        "suggestion"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "pattern": "^[A-Z]{2,3}[0-9]{3}$"
+        },
+        "severity": {
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "category": {
+          "enum": ["test-integrity", "dependencies", "sandbox", "claims", "error-handling", "api-surface", "safety"]
+        },
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "suggestion": {
+          "type": "string"
+        }
+      }
+    },
+    "skipped_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "reason"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "reason",
+        "head_percent",
+        "has_base",
+        "base_percent",
+        "delta_percent"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "head_percent": {
+          "type": "number"
+        },
+        "has_base": {
+          "type": "boolean"
+        },
+        "base_percent": {
+          "type": "number"
+        },
+        "delta_percent": {
+          "type": "number"
+        }
+      }
+    },
+    "suppressed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "entries"],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/suppression" }
+        }
+      }
+    },
+    "suppression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "severity",
+        "file",
+        "line",
+        "message",
+        "reason",
+        "expires",
+        "expired",
+        "source"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "pattern": "^[A-Z]{2,3}[0-9]{3}$"
+        },
+        "severity": {
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "file": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "expires": {
+          "type": "string"
+        },
+        "expired": {
+          "type": "boolean"
+        },
+        "source": {
+          "enum": ["baseline", "policy"]
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo", "base", "head", "version", "generated_at"],
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "base": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+        }
+      }
+    }
+  }
+}

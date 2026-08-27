@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, history</title>
+<meta name="description" content="Save verify reports over time with --save and render a score-over-time HTML trend, or dump the series as JSON.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html" class="on">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Report</span>
+    <h1>History</h1>
+    <p class="lede">
+      Save every <code>verify</code> report with <code>--save</code>,
+      then render a score-over-time trend with <code>paranoid
+      history</code>: one self-contained HTML file, or a JSON series
+      for scripting. Everything stays on disk, local to the repo.
+    </p>
+
+    <h2>Saving reports</h2>
+    <p>
+      <code>verify --save</code> writes the exact same report
+      <code>verify</code> already computed to
+      <code>.paranoid/history/&lt;utc-timestamp&gt;-&lt;short-sha&gt;.json</code>,
+      in addition to whatever <code>--format</code> and
+      <code>--output</code> already do. The directory is created on
+      demand. The timestamp is the run's own
+      <code>generated_at</code> value (the injectable clock every
+      other deterministic part of this tool already uses), not a
+      second, independent wall-clock read; the short SHA is the
+      current <code>HEAD</code> commit, truncated to 7 characters, so
+      each saved file is readable at a glance and collisions are rare
+      in practice.
+    </p>
+    <pre><code>$ paranoid verify --save
+...
+$ ls .paranoid/history/
+20260826T120000Z-3f2a9c1.json</code></pre>
+
+    <h2>Rendering the trend</h2>
+    <p>
+      <code>paranoid history [path]</code> loads every file under
+      <code>.paranoid/history/</code>, sorts them oldest to newest by
+      <code>generated_at</code>, and renders an HTML page with:
+    </p>
+    <ul>
+      <li>A score-over-time line chart, drawn as inline SVG by hand: no charting library, no remote fetch, nothing but numbers this command already has.</li>
+      <li>A runs table: date, base..head, score, verdict, and finding count by category.</li>
+      <li>One sparkline per finding category, showing how its count moved across the same runs.</li>
+    </ul>
+    <pre><code>$ paranoid history
+$ ls paranoid-history.html</code></pre>
+    <p>
+      A file that cannot be read, cannot be parsed, or was written by
+      a build that used a different <code>history_version</code> is
+      skipped, with one line on stderr naming the file and why. One
+      corrupt or foreign file never blocks the rest of the series, and
+      the command never crashes over it.
+    </p>
+
+    <h2>Determinism</h2>
+    <p>
+      The same history directory always renders the same HTML bytes.
+      Every value in the page, chart included, comes from the saved
+      reports themselves (scores, dates, category counts); nothing is
+      stamped in at render time. Runs are plotted at even, index-based
+      steps along the x-axis rather than scaled to calendar time,
+      since <code>verify --save</code> runs are irregular and even
+      spacing keeps the chart both simple and reproducible.
+    </p>
+
+    <h2>The history envelope, version 1</h2>
+    <p>
+      Each saved file wraps the full <code>verify</code> report
+      (identical to <code>--format json</code>'s own output, including
+      its own <code>schema_version</code>) in a small envelope with
+      its own version number, independent of the report's:
+    </p>
+    <table class="mono">
+      <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
+      <tr><td>history_version</td><td>integer</td><td>Always 1 today</td></tr>
+      <tr><td>report</td><td>object</td><td>The full verify report, same shape as <code>--format json</code></td></tr>
+    </table>
+    <p>
+      A report schema bump never forces a history envelope version
+      bump, and the reverse is true too, the same relationship the
+      baseline file and the fix-prompt schema already have to the
+      report schema. See <a href="report-schema.html">Report &amp;
+      schema</a>.
+    </p>
+
+    <h2>JSON series (--format json)</h2>
+    <p>
+      <code>paranoid history --format json</code> prints the parsed,
+      derived series instead of rendering HTML: one entry per run,
+      plus the fixed, alphabetically sorted list of categories every
+      per-run breakdown uses. To stdout by default, for scripting.
+    </p>
+    <pre><code>{
+  "history_version": 1,
+  "runs": [
+    {
+      "generated_at": "2026-08-26T12:00:00Z",
+      "base": "7db5cfb...",
+      "head": "worktree",
+      "score": 90,
+      "verdict": "pass",
+      "total_findings": 1,
+      "findings_by_category": {"test-integrity": 1}
+    }
+  ],
+  "categories": ["test-integrity"]
+}</code></pre>
+
+    <h2>Privacy</h2>
+    <p>
+      Everything here is local. Saving, loading, and rendering never
+      make a network call, and the history directory never leaves
+      your machine unless you copy it somewhere yourself. Add
+      <code>.paranoid/</code> to your repository's
+      <code>.gitignore</code>; these are personal, local run records,
+      not something the team needs committed.
+    </p>
+
+    <h2>Flags</h2>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--format</td><td>html</td><td>Output format: html or json</td></tr>
+      <tr><td>--output</td><td>paranoid-history.html for html, stdout for json</td><td>Write the output to this file instead</td></tr>
+    </table>
+    <p>
+      <code>verify</code> itself gains one new flag:
+      <code>--save</code> (off by default), which has no effect on
+      <code>verify</code>'s own score, verdict, or exit code.
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

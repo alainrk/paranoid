@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "EH004", "severity": "medium", "category": "error-handling", "file": "checkout.js", "line": 4}
+  ]
+}

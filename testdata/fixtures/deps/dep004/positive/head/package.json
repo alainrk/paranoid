@@ -1,0 +1,7 @@
+{
+  "name": "webapp",
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "expres": "^4.18.2"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "DEP005", "severity": "medium", "category": "dependencies", "file": "app.py", "line": 2}
+  ]
+}

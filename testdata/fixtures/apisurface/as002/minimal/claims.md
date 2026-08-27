@@ -1,0 +1,1 @@
+- Fixed SaveUser to handle the duplicate-key case.

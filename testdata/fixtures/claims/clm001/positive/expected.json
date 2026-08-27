@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "CLM001", "severity": "medium", "category": "claims", "file": "utils/helpers.py", "line": 0}
+  ]
+}

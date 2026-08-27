@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "EH002", "severity": "medium", "category": "error-handling", "file": "save.js", "line": 4}
+  ]
+}

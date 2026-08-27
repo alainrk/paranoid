@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, watch</title>
+<meta name="description" content="Watch a repository and run static checks (test integrity plus DEP005) on every change, live.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html" class="on">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Checks</span>
+    <h1>watch</h1>
+    <p class="lede">
+      <code>watch</code> recursively watches a repository and runs a
+      static-only check on every relevant change, live, instead of
+      one shot after the agent stops.
+    </p>
+
+    <h2>What it does</h2>
+    <p>
+      Run <code>paranoid watch [path]</code> while an agent (or you)
+      is editing a repository. It resolves a base ref once, at
+      startup, then watches the tree for changes to test files, test
+      configuration, CI workflow files, and dependency manifests. On
+      a debounced batch of changes it runs test integrity plus DEP005
+      against that fixed base and the current worktree, and prints
+      the result.
+    </p>
+    <pre><code>$ paranoid watch
+
+watching /home/you/project from base 7db5cfbeaacf (Ctrl-C to stop)
+14:32:07  write  internal/calc/calc_test.go
+14:32:08  1 finding  score 90  verdict pass  (84ms)
+
+paranoid dev
+repo: /home/you/project
+base: 7db5cfbeaacf
+head: worktree
+
+score: 90/100  verdict: pass
+
+test-integrity (1 finding)
+
+  TI004  high  internal/calc/calc_test.go:6
+      A skip was added to an existing test.
+      evidence: TestAdd now calls a skip method
+      fix: Remove the skip or explain why the test cannot run.
+
+checks run: test-integrity/config, test-integrity/go, test-integrity/javascript, test-integrity/python, dependencies/consistency
+...</code></pre>
+    <p>
+      Every line of output starts with a clock time. A relevant
+      filesystem event gets one compact line as it happens
+      (<code>write</code>, <code>create</code>, <code>remove</code>,
+      or <code>rename</code>, then the path relative to the watched
+      root). Once a debounced run finishes, one status line always
+      prints (score, verdict, finding count, run time); when the run
+      actually found something, the full report follows it, the same
+      text format <code>verify</code> prints.
+    </p>
+
+    <h2>What counts as a relevant change</h2>
+    <p>
+      <code>watch</code> reuses the exact same file classification
+      <code>verify</code> already uses, from
+      <code>internal/analyze/testintegrity/common</code> and
+      <code>internal/analyze/deps</code>, so "what is a test file" or
+      "what is a manifest" is never a second, drifting definition:
+    </p>
+    <ul>
+      <li>A Go, Python, or JS/TS test file.</li>
+      <li>A test or CI configuration file (pytest, jest/vitest config, a Makefile, a <code>.github/workflows/*.yml</code> file).</li>
+      <li>A dependency manifest or lockfile (<code>package.json</code>, <code>go.mod</code>, <code>requirements*.txt</code>, and so on).</li>
+    </ul>
+    <p>
+      Anything else, a source file, documentation, an asset, does not
+      trigger a run. The watch is recursive: a newly created
+      directory is added to it automatically, and a removed directory
+      is dropped from it. <code>.git/</code>, <code>node_modules/</code>,
+      and common build directories (<code>dist</code>,
+      <code>build</code>, <code>vendor</code>, <code>__pycache__</code>,
+      and similar) are never descended into.
+    </p>
+
+    <h2>The static-only scope</h2>
+    <p>
+      Every debounced run is test integrity plus DEP005 (dependency
+      consistency) only. It never contacts a dependency registry
+      (the same skip <code>verify --offline</code> gives DEP001 to
+      DEP004) and never runs the clean-room sandbox. Claims,
+      error-handling, api-surface, and safety analysis do not run
+      either. The report is always honest about this: every stage
+      that does not run is listed in <code>checks_skipped</code> with
+      the reason, never silently missing.
+    </p>
+    <p>
+      This is a deliberate scope, not a shortcut applied silently: a
+      live watch needs an answer in well under a second, and a
+      container run or a network round trip cannot deliver that. Run
+      <code>paranoid verify</code> for the full pipeline, including
+      the sandbox and claims checking, once you are done.
+    </p>
+
+    <h2>Base and head</h2>
+    <p>
+      The base ref is resolved exactly once, when <code>watch</code>
+      starts: <code>--base</code> if given, otherwise the same
+      default <code>verify</code> uses (merge-base with the default
+      branch, else <code>HEAD~1</code>). Every run for the life of
+      that one <code>watch</code> process compares against that same
+      base, even if you commit or switch branches while it is
+      running. There is no <code>--head</code> flag: the head is
+      always the current worktree, since that is the entire point of
+      a live watch.
+    </p>
+
+    <h2>Notifications</h2>
+    <p>
+      <code>--notify</code> sends a desktop notification whenever a
+      run finds something: <code>osascript</code> on darwin,
+      <code>notify-send</code> on linux, when either is on
+      <code>PATH</code>. On any other platform, or when the binary is
+      not available, notification is silently skipped; it never fails
+      the run.
+    </p>
+
+    <h2>Performance target</h2>
+    <p>
+      From a settled change (the debounce window closing) to a
+      printed report, under 1 second on a 100-file diff. This matches
+      the shape of <code>verify</code>'s own target (under 2 seconds
+      without the sandbox on a 100-file diff): watch mode's pipeline
+      is a strict subset of that same work, so it stays well inside
+      it.
+    </p>
+
+    <h2>Lifecycle</h2>
+    <p>
+      Stop with Ctrl-C (SIGINT) or SIGTERM. Shutdown is always clean:
+      the filesystem watcher is closed, and an in-flight check either
+      finishes on its own or is canceled through its context, never
+      left running after the process exits. A single worker runs one
+      check at a time; a change that arrives while a check is still
+      running is coalesced into exactly one more run once it
+      finishes, never a growing queue of pending runs.
+    </p>
+
+    <h2>Flags</h2>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--base string</td><td>merge-base with the default branch, else HEAD~1</td><td>State to compare the worktree against, resolved once at startup</td></tr>
+      <tr><td>--notify</td><td>off</td><td>Send a desktop notification when a run finds something</td></tr>
+    </table>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

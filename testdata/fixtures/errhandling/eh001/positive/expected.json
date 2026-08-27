@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "EH001", "severity": "medium", "category": "error-handling", "file": "save.go", "line": 4}
+  ]
+}

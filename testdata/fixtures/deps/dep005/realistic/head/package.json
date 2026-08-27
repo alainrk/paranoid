@@ -1,0 +1,7 @@
+{
+  "name": "webapp",
+  "dependencies": {
+    "express": "^4.18.2",
+    "request-promise-turbo": "^1.0.0"
+  }
+}

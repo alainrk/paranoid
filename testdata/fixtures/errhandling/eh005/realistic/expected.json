@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "EH005", "severity": "high", "category": "error-handling", "file": "payments.go", "line": 10}
+  ]
+}

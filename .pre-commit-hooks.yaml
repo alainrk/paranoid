@@ -1,0 +1,15 @@
+# Pre-commit hook definitions for paranoid. See integrations/README.md
+# for setup instructions and known limits. This file must live at the
+# repo root: pre-commit only looks for .pre-commit-hooks.yaml there.
+#
+# GitLab support is deferred (maintainer decision, 2026-08-21), so this
+# is the only pre-commit integration file for now.
+- id: paranoid-verify
+  name: paranoid verify
+  description: >-
+    Verify AI agent work in this commit range with paranoid, offline
+    and without a container sandbox.
+  entry: paranoid verify --sandbox none --offline --base HEAD
+  language: golang
+  pass_filenames: false
+  stages: [pre-commit, pre-push]

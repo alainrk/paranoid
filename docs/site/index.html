@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, overview</title>
+<meta name="description" content="Official documentation for paranoid: commands, flags, rules, report schema, sandbox, sessions, baseline, the team policy file, fix-prompt, watch, signing, and integrations.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea;
+    --paper-deep: #ece8dc;
+    --ink: #1c1914;
+    --ink-soft: #4f4a40;
+    --rule: #d8d2c2;
+    --accent: #b23a1d;
+    --pass: #1d6b45;
+    --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code {
+    background: var(--paper-deep); border: 1px solid var(--rule);
+    padding: 1px 6px; font-size: 0.85em; border-radius: 2px;
+  }
+  pre {
+    border: 1px solid var(--ink); background: #14110c; color: #e9e4d6;
+    padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.6;
+    margin: 18px 0;
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 14px 24px; max-width: 1160px; margin: 0 auto;
+    font-family: var(--mono); font-size: 14px;
+  }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side {
+    width: 230px; flex: none; position: sticky; top: 62px;
+    padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px;
+  }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label {
+    text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px;
+    color: var(--ink-soft); margin: 0 0 8px;
+  }
+  .side a {
+    display: block; text-decoration: none; color: var(--ink-soft);
+    padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px;
+    margin-left: -11px;
+  }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+  }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+
+  .card {
+    border: 1px solid var(--ink); background: var(--paper-deep);
+    padding: 18px 20px; margin: 22px 0;
+  }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .note { border-left: 3px solid var(--accent); padding-left: 16px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 22px 0; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+  .tile {
+    border: 1px solid var(--ink); padding: 18px 20px; text-decoration: none; color: var(--ink); display: block;
+  }
+  .tile:hover { background: var(--paper-deep); }
+  .tile .rid { font-family: var(--mono); font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; }
+  .tile h3 { margin: 8px 0 6px; }
+  .tile p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+  .v-pass { color: var(--pass); font-weight: 600; }
+  .v-warn { color: var(--warn); font-weight: 600; }
+  .v-fail { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html" class="on">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Documentation</span>
+    <h1>paranoid docs</h1>
+    <p class="lede">
+      Reference documentation for paranoid, a local CLI that audits
+      agent-written diffs: every command, every flag, every rule, the
+      report schema, and CI setup. For an overview of the tool, see
+      the <a href="../../index.html">landing page</a>.
+    </p>
+
+    <h2>What paranoid does</h2>
+    <p>
+      Point paranoid at a git range: the commit before the agent worked
+      and the commit (or working tree) after. It analyzes the diff for
+      deleted or weakened tests, dependencies that do not exist,
+      swallowed errors, removed public symbols, disabled safety
+      controls, and claims not backed by the change. It can also rerun
+      the test suite in a container with no network. It prints a report
+      with a 0 to 100 score and exits with a code you can gate CI on.
+    </p>
+    <p>
+      Everything runs locally. No telemetry, no account, no server.
+      The only network use is optional dependency-registry lookups,
+      and <code>--offline</code> turns those off too.
+    </p>
+
+    <h2>Where to start</h2>
+    <div class="grid2">
+      <a class="tile" href="getting-started.html">
+        <span class="rid">Start here</span>
+        <h3>Getting started</h3>
+        <p>Install paranoid and run your first verify.</p>
+      </a>
+      <a class="tile" href="verify.html">
+        <span class="rid">Command</span>
+        <h3>verify &amp; flags</h3>
+        <p>Every flag on the main command, with defaults.</p>
+      </a>
+      <a class="tile" href="rules.html">
+        <span class="rid">Reference</span>
+        <h3>Rules</h3>
+        <p>All seven categories, every rule ID, what each one catches.</p>
+      </a>
+      <a class="tile" href="policy.html">
+        <span class="rid">Config</span>
+        <h3>Team policy file</h3>
+        <p>.paranoid.toml's four keys: thresholds, a disabled rule, sandbox image pins.</p>
+      </a>
+      <a class="tile" href="exit-codes-ci.html">
+        <span class="rid">CI</span>
+        <h3>Exit codes &amp; CI</h3>
+        <p>Score thresholds, exit codes, and the GitHub Action.</p>
+      </a>
+      <a class="tile" href="report-schema.html">
+        <span class="rid">Formats</span>
+        <h3>Report &amp; schema</h3>
+        <p>The JSON report, its versioned schema, and SARIF output.</p>
+      </a>
+      <a class="tile" href="baseline.html">
+        <span class="rid">Adoption</span>
+        <h3>Baseline &amp; suppressions</h3>
+        <p>Snapshot existing findings so only new ones fail CI.</p>
+      </a>
+      <a class="tile" href="history.html">
+        <span class="rid">Trend</span>
+        <h3>History</h3>
+        <p>Save reports over time and render a score trend as HTML.</p>
+      </a>
+      <a class="tile" href="sessions-claims.html">
+        <span class="rid">Claims</span>
+        <h3>Sessions &amp; claims</h3>
+        <p>Checking the agent's own summary against the diff, and which agents are supported.</p>
+      </a>
+      <a class="tile" href="sandbox.html">
+        <span class="rid">Clean room</span>
+        <h3>Sandbox &amp; coverage</h3>
+        <p>How the clean-room test rerun and coverage collection work.</p>
+      </a>
+      <a class="tile" href="fix-prompt.html">
+        <span class="rid">Command</span>
+        <h3>fix-prompt</h3>
+        <p>Turn a report into a corrective instruction block for the agent.</p>
+      </a>
+      <a class="tile" href="watch.html">
+        <span class="rid">Command</span>
+        <h3>watch</h3>
+        <p>Watch a repository and run static checks live, on every change.</p>
+      </a>
+      <a class="tile" href="attest.html">
+        <span class="rid">Trust</span>
+        <h3>Signing &amp; attest</h3>
+        <p>Sign a report, check it, a commit trailer, and a badge file.</p>
+      </a>
+      <a class="tile" href="integrations.html">
+        <span class="rid">CI</span>
+        <h3>Integrations</h3>
+        <p>The GitHub Action, the pre-commit hook, and Claude Code.</p>
+      </a>
+    </div>
+
+    <h2>Command reference at a glance</h2>
+    <div class="twrap">
+    <table class="mono">
+      <tr><th>Command</th><th>What it does</th></tr>
+      <tr><td>paranoid verify [path]</td><td>Run the audit. The main command.</td></tr>
+      <tr><td>paranoid fix-prompt [path]</td><td>Render findings into a corrective instruction block.</td></tr>
+      <tr><td>paranoid baseline [path]</td><td>Write current findings to .paranoid-baseline.json.</td></tr>
+      <tr><td>paranoid history [path]</td><td>Render a score-over-time trend from reports saved by verify --save.</td></tr>
+      <tr><td>paranoid watch [path]</td><td>Watch a repository and run static checks on every change.</td></tr>
+      <tr><td>paranoid mcp</td><td>Run an MCP server over stdio exposing verify as a tool.</td></tr>
+      <tr><td>paranoid attest keygen</td><td>Generate a local ed25519 signing key.</td></tr>
+      <tr><td>paranoid attest verify</td><td>Check a report signed by verify --sign.</td></tr>
+      <tr><td>paranoid rules</td><td>List all rules with descriptions.</td></tr>
+      <tr><td>paranoid version</td><td>Print version, commit, and build date.</td></tr>
+      <tr><td>paranoid completion</td><td>Print a shell autocompletion script.</td></tr>
+    </table>
+    </div>
+    <p>
+      Every command's flags are taken from its own <code>--help</code>
+      output in this repository, on the branch this page describes.
+      If your installed build behaves differently, trust
+      <code>paranoid &lt;command&gt; --help</code> over this page.
+    </p>
+
+    <hr>
+    <p>
+      <a href="https://github.com/alainrk/paranoid">Source on GitHub</a>
+      &middot;
+      <a href="https://github.com/alainrk/paranoid/blob/main/docs/rules.md">docs/rules.md</a>
+      (the canonical generated rule reference)
+      &middot;
+      <a href="https://github.com/alainrk/paranoid/blob/main/LICENSE">Apache-2.0</a>
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="../../index.html">&larr; back to the landing page</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

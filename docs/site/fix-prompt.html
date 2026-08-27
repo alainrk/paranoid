@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, fix-prompt</title>
+<meta name="description" content="Turn a verify report into a deterministic, copy-paste-ready instruction block that tells the agent what to fix.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html" class="on">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Checks</span>
+    <h1>fix-prompt</h1>
+    <p class="lede">
+      <code>fix-prompt</code> renders the findings of a verify run
+      into a deterministic instruction block you can hand back to the
+      agent.
+    </p>
+
+    <h2>What it does</h2>
+    <p>
+      Run <code>paranoid fix-prompt</code> the same way you run
+      <code>verify</code>, and instead of a report it prints one
+      deterministic, copy-paste-ready instruction block: a contract up
+      front (fix the code, do not change the tests or suppress a
+      finding), one numbered instruction per open finding, worst
+      severity first, and a closing line asking for proof that the
+      whole build, lint, and test suite still passes.
+    </p>
+    <pre><code>$ paranoid fix-prompt --claims summary.md
+Fix the code. Do not change the tests, do not weaken any assertion, and
+do not suppress or delete findings to make this pass.
+
+1. [CRITICAL] TI001 internal/calc/calc_test.go
+   Restore the deleted test file at internal/calc/calc_test.go; do not
+   delete a test to make the suite pass. Evidence: test file with 1
+   test functions deleted.
+
+2. [MEDIUM] EH001 internal/app/save.go:4
+   Restore proper error checking around the call in
+   internal/app/save.go (around line 4) instead of discarding the
+   result. Evidence: _ = f.Close().
+
+When every instruction above is done, prove it: rerun this project's
+full build, lint, and test suite (the equivalent of `make check`) and
+show that it passes.</code></pre>
+    <p>
+      Hand that block straight back to the agent (a chat message, a
+      follow-up prompt, a CI comment) and re-run <code>verify</code>
+      once it replies.
+    </p>
+
+    <h2>Where each instruction comes from</h2>
+    <p>
+      Every rule in the registry carries a <code>Fix</code> template:
+      a plain-English, imperative instruction with placeholders for
+      the finding's file, line, evidence, message, and suggestion. The
+      template language is a restricted subset of Go's
+      <code>text/template</code>: only two helper functions exist,
+      shared by every rule, and no rule can add its own.
+    </p>
+    <table class="mono">
+      <tr><th>Function</th><th>What it does</th></tr>
+      <tr><td>atLine</td><td>Turns a possibly-zero line number into a sentence fragment ("line 12", or "an unspecified line" when the line is 0 or unknown)</td></tr>
+      <tr><td>evidenceOrNote</td><td>Falls back to "no evidence recorded" when the finding's evidence text is empty</td></tr>
+    </table>
+    <p>
+      A registry test fails the build if any rule is missing a
+      <code>Fix</code> template, and every template must render
+      without error even on a zero-value finding. When a rule's
+      detection logic changes, its Fix template is updated in the same
+      pull request; this is part of the rule-authoring checklist in
+      <a href="rules.html">docs/rules.md</a>.
+    </p>
+
+    <h2>Findings are already filtered</h2>
+    <ul>
+      <li>Findings already suppressed by a baseline never show up here, since <code>fix-prompt</code> only ever sees the findings <code>verify</code> would have scored. See <a href="baseline.html">Baseline &amp; suppressions</a>.</li>
+      <li>Skipped checks are listed at the end as "could not verify" notes, not silently dropped.</li>
+      <li>Instructions are ordered by severity, then rule ID, then file: the same input always produces the same block, in the same order.</li>
+    </ul>
+
+    <h2>Two ways to run it</h2>
+    <p>
+      By default, <code>fix-prompt [path]</code> runs the verify
+      pipeline itself, accepting the same <code>--base</code>,
+      <code>--head</code>, <code>--claims</code>, <code>--session</code>,
+      <code>--sandbox</code>, and baseline flags as <code>verify</code>.
+    </p>
+    <p>
+      Pass <code>--report &lt;file&gt;</code> to render from an
+      already-generated <code>--format json</code> verify report
+      instead of re-running the pipeline. <code>--report</code> cannot
+      be combined with any pipeline flag (base, head, claims, session,
+      sandbox, baseline); either point <code>fix-prompt</code> at a
+      report or let it verify the range itself, never both.
+    </p>
+    <pre><code>paranoid verify --format json --output report.json
+paranoid fix-prompt --report report.json</code></pre>
+
+    <h2>Flags</h2>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--report string</td><td>none</td><td>Read findings from an already-generated JSON verify report instead of running the pipeline</td></tr>
+      <tr><td>--format string</td><td>text</td><td>Output format: text or json</td></tr>
+      <tr><td>--output string</td><td>stdout</td><td>Write the instruction block to a file instead</td></tr>
+    </table>
+    <p>
+      Plus every pipeline flag <code>verify</code> has: <code>--base</code>,
+      <code>--head</code>, <code>--offline</code>, <code>--sandbox</code>,
+      <code>--sandbox-image</code>, <code>--sandbox-timeout</code>,
+      <code>--compare-base</code>, <code>--claims</code>,
+      <code>--session</code> (and its hidden <code>--claude-session</code>
+      alias), <code>--baseline</code>, and <code>--no-baseline</code>.
+      See <a href="verify.html">verify &amp; flags</a> for what each
+      one means.
+    </p>
+
+    <h2>JSON output</h2>
+    <p>
+      <code>--format json</code> follows its own versioned schema,
+      independent of the verify report's schema. See
+      <a href="report-schema.html">Report &amp; schema</a> for the
+      exact shape: <code>{schema_version, instructions: [{rule_id,
+      severity, file, line, instruction}], notes}</code>.
+    </p>
+
+    <h2>Exit code</h2>
+    <p>
+      <code>fix-prompt</code> produces no score or verdict of its own;
+      it only reorders and re-renders findings a <code>verify</code>
+      run already produced. It exits 0 once it renders successfully,
+      no matter how many instructions it printed, so
+      <code>--fail-under</code> and <code>--strict</code> do not apply
+      to it. It exits 3 only when it could not produce an instruction
+      block at all: bad flags, a git failure, or an unreadable or
+      wrong-schema <code>--report</code> file.
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, exit codes and CI</title>
+<meta name="description" content="Score thresholds, exit codes, and how to wire paranoid into CI: the GitHub Action, SARIF upload, and plain CI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .note { border-left: 3px solid var(--accent); padding-left: 16px; }
+  .v-pass { color: var(--pass); font-weight: 600; }
+  .v-warn { color: var(--warn); font-weight: 600; }
+  .v-fail { color: var(--accent); font-weight: 600; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html" class="on">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Core</span>
+    <h1>Exit codes and CI usage</h1>
+    <p class="lede">
+      The score-to-verdict mapping, the exit codes, and the GitHub
+      Action.
+    </p>
+
+    <h2>Score and verdict</h2>
+    <p>
+      The score starts at 100. Each finding subtracts a fixed weight
+      by severity: critical 25, high 10, medium 4, low 1, info 0. The
+      floor is 0. One critical finding is enough to lose a pass; three
+      high findings do it too (two land exactly on the pass line at
+      80).
+    </p>
+    <table>
+      <tr><th>Score</th><th>Verdict</th><th>Exit code</th></tr>
+      <tr><td>80 to 100</td><td class="v-pass">pass</td><td>0</td></tr>
+      <tr><td>50 to 79</td><td class="v-warn">warn</td><td>1 (or 2 with --strict)</td></tr>
+      <tr><td>0 to 49</td><td class="v-fail">fail</td><td>2</td></tr>
+    </table>
+    <p>
+      Exit code 2 is also used when the score drops below
+      <code>--fail-under</code> (default 50), even if the verdict
+      would otherwise be pass or warn. <code>--strict</code> turns a
+      warn verdict into a fail before the exit code is picked, so warn
+      always exits 2 under <code>--strict</code>. A <code>.paranoid.toml</code>
+      at the repo root can set its own <code>fail-under</code> and
+      <code>strict</code> defaults, used whenever the matching flag is
+      not itself given; see <a href="policy.html">Team policy file</a>.
+    </p>
+    <p>
+      Exit code 3 means paranoid itself hit an error: a bad flag, not
+      a git repository, a git failure, an unreadable file. It never
+      means a finding fired; the report cannot be trusted either way
+      when you see a 3. <code>baseline</code>, <code>fix-prompt</code>,
+      <code>rules</code>, <code>version</code>, and <code>attest
+      keygen</code> only ever exit 0 on success or 3 on error; they
+      have no score or verdict of their own to map to 1 or 2.
+    </p>
+    <p>
+      <code>paranoid attest verify</code> has its own, separate exit
+      code scheme, since it checks a signature, not a diff: 0 means
+      the signature is valid, 2 means it is invalid, 3 means
+      verification could not be attempted at all. See
+      <a href="attest.html">Signing &amp; attest</a>.
+    </p>
+    <div class="card">
+      <p>
+        The report always lists which checks ran and which were
+        skipped, with the reason. A pass with skipped checks is still
+        visible in the report, so read the skipped-checks list in CI,
+        not just the exit code.
+      </p>
+    </div>
+
+    <h2>The GitHub Action</h2>
+    <p>
+      The composite action at <code>alainrk/paranoid/action@main</code>
+      runs <code>verify</code> on the pull request range, uploads the
+      report as an artifact, appends it to the job summary, optionally
+      posts a sticky PR comment, and sets the check status from the
+      verdict.
+    </p>
+    <pre><code>permissions:
+  contents: read
+  pull-requests: write # only needed for the sticky comment
+
+jobs:
+  paranoid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: alainrk/paranoid/action@main
+        with:
+          sandbox: none # or auto, when the runner has docker
+          claims: summary.md # optional</code></pre>
+
+    <h3>Action inputs</h3>
+    <div class="twrap">
+    <table class="mono">
+      <tr><th>Input</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>base</td><td>PR base ref (falls back to the PR's base SHA)</td><td>State before the agent worked</td></tr>
+      <tr><td>head</td><td>PR head</td><td>State after the agent worked</td></tr>
+      <tr><td>claims</td><td>none</td><td>Path to a free-text summary file</td></tr>
+      <tr><td>session</td><td>none</td><td>Path to an agent session file; ignored when claims is also set</td></tr>
+      <tr><td>sandbox</td><td>auto</td><td>auto, docker, podman, or none</td></tr>
+      <tr><td>offline</td><td>false</td><td>Skip registry lookups</td></tr>
+      <tr><td>fail-under</td><td>50</td><td>Fail when the score drops below this</td></tr>
+      <tr><td>strict</td><td>false</td><td>Treat a warn verdict as failure</td></tr>
+      <tr><td>baseline</td><td>none</td><td>Path to a baseline file, overriding the auto-detected .paranoid-baseline.json</td></tr>
+      <tr><td>no-baseline</td><td>false</td><td>Ignore any baseline file, including the auto-detected one</td></tr>
+      <tr><td>version</td><td>main</td><td>paranoid ref to install with go install</td></tr>
+      <tr><td>comment</td><td>true</td><td>Post or update a sticky PR comment; set false to skip it and drop the write permission</td></tr>
+      <tr><td>sarif</td><td>false</td><td>Also write paranoid-report.sarif</td></tr>
+    </table>
+    </div>
+    <p>Outputs: <code>verdict</code> (pass, warn, or fail) and <code>score</code> (0 to 100).</p>
+    <p>
+      The action has no input for <code>.paranoid.toml</code>: it does
+      not need one, since the file is read from the checked-out repo
+      itself. A repo's <code>[[disable]]</code> and <code>[sandbox]</code>
+      keys apply exactly as they do outside CI. Its <code>fail-under</code>
+      key does not: the action always passes <code>--fail-under</code>
+      explicitly (this input's own default is 50), so cobra always sees
+      the flag as set and it always wins over the policy file.
+      <code>strict</code> is unaffected, since the action only adds
+      <code>--strict</code> when its own <code>strict</code> input is
+      <code>true</code>. See <a href="policy.html">Team policy file</a>.
+    </p>
+
+    <h3>Uploading findings to GitHub code scanning</h3>
+    <p>
+      Set <code>sarif: "true"</code> and add an
+      <code>upload-sarif</code> step after the action. This needs the
+      <code>security-events: write</code> permission, which the action
+      itself never requests.
+    </p>
+    <pre><code>permissions:
+  contents: read
+  pull-requests: write # only needed for the sticky comment
+  security-events: write # only needed to upload SARIF
+
+jobs:
+  paranoid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: alainrk/paranoid/action@main
+        with:
+          sandbox: none
+          sarif: "true"
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: paranoid-report.sarif</code></pre>
+    <p>
+      Findings then show up next to the rest of the repository's code
+      scanning alerts, with the rule's severity, message, and file
+      location; each rule links back to its entry in docs/rules.md.
+      See <a href="report-schema.html">Report &amp; schema</a> for the
+      SARIF contract itself.
+    </p>
+
+    <h3>Adopting the Action on an existing repo</h3>
+    <p>
+      Generate and commit <code>.paranoid-baseline.json</code> once,
+      locally, before turning the Action on. The Action needs no extra
+      input for this: <code>verify</code> auto-detects the committed
+      file at the repo root the same way it does outside CI. Use the
+      <code>baseline</code> input only if you keep the file somewhere
+      else, and <code>no-baseline: "true"</code> for a workflow that
+      should ignore it entirely. See
+      <a href="baseline.html">Baseline &amp; suppressions</a>.
+    </p>
+
+    <h2>Plain CI, no Action</h2>
+    <p>The exit code is enough on any CI system:</p>
+    <pre><code>paranoid verify --base "origin/$BASE_REF" --format md --output report.md</code></pre>
+    <p>
+      This repository runs the same check on every push and pull
+      request; the report of each run is in the job summary.
+      <code>--format sarif</code> works the same way outside the
+      Action, for any CI system that accepts a SARIF file (GitHub's
+      own <code>upload-sarif</code> step, or a third-party code
+      scanning integration).
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

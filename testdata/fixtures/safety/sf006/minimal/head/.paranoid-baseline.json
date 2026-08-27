@@ -1,0 +1,8 @@
+{
+  "baseline_version": 1,
+  "tool_version": "test",
+  "created_at": "2026-01-01T00:00:00Z",
+  "entries": [
+    {"rule_id": "TI001", "file": "calc_test.go", "fingerprint": "deadbeef", "reason": "", "expires": ""}
+  ]
+}

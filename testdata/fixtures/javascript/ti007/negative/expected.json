@@ -1,0 +1,6 @@
+{
+  "findings": [
+    {"rule_id": "TI002", "severity": "high", "category": "test-integrity", "file": "labels.test.js", "line": 0},
+    {"rule_id": "TI010", "severity": "medium", "category": "test-integrity", "file": "labels.test.js", "line": 0}
+  ]
+}

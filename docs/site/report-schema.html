@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, report and schema</title>
+<meta name="description" content="The JSON verify report, its versioned schema, the text and markdown formats, and SARIF output.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html" class="on">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Report</span>
+    <h1>The JSON report, its schema, and SARIF</h1>
+    <p class="lede">
+      Four output formats, one underlying result. Pick <code>text</code>
+      for a terminal, <code>md</code> for a PR comment or job summary,
+      <code>json</code> for scripting, or <code>sarif</code> for code
+      scanning tools.
+    </p>
+
+    <h2>Formats</h2>
+    <table>
+      <tr><th>Format</th><th>Use it for</th></tr>
+      <tr><td>text (default)</td><td>Reading in a terminal. Uses color on a real terminal and respects <code>NO_COLOR</code>.</td></tr>
+      <tr><td>md</td><td>PR comments, job summaries, anywhere Markdown renders.</td></tr>
+      <tr><td>json</td><td>Scripting and storage. Byte-identical across reruns of the same input.</td></tr>
+      <tr><td>sarif</td><td>GitHub code scanning and other SARIF-reading tools.</td></tr>
+    </table>
+    <p>
+      Pick with <code>--format</code> on <code>verify</code>. All four
+      renderers describe the same underlying <code>finding.Result</code>,
+      so the same run produces the same findings in every format; only
+      the shape differs.
+    </p>
+
+    <h2>The JSON report, schema version 7</h2>
+    <p>
+      The JSON report follows a versioned schema, checked in at
+      <a href="https://github.com/alainrk/paranoid/blob/main/docs/schema/report-v1.schema.json">docs/schema/report-v1.schema.json</a>.
+      A test in the repository checks every rendered report against
+      this file; it accepts nothing the schema does not describe
+      (<code>additionalProperties: false</code> everywhere). The
+      current version is <code>7</code>. Whenever a change adds a
+      field, a category, or a report section, this number goes up; a
+      field never changes shape under the same number.
+    </p>
+    <table class="mono">
+      <tr><th>Top-level field</th><th>Type</th><th>Meaning</th></tr>
+      <tr><td>schema_version</td><td>integer</td><td>Always 7 today</td></tr>
+      <tr><td>score</td><td>integer 0-100</td><td>The trust score</td></tr>
+      <tr><td>verdict</td><td>"pass" | "warn" | "fail"</td><td>Derived from the score</td></tr>
+      <tr><td>findings</td><td>array of finding</td><td>Everything that fired, minus baseline and policy suppressions</td></tr>
+      <tr><td>checks_run</td><td>array of string</td><td>Names of checks that actually ran</td></tr>
+      <tr><td>checks_skipped</td><td>array of {name, reason}</td><td>Checks that could not run, and why</td></tr>
+      <tr><td>coverage</td><td>object</td><td>Total test coverage, best-effort; see Sandbox &amp; coverage</td></tr>
+      <tr><td>suppressed</td><td>object {count, entries}</td><td>Findings a baseline entry or a policy [[disable]] entry matched, see Baseline &amp; suppressions and Team policy file</td></tr>
+      <tr><td>meta</td><td>object</td><td>repo, base, head, tool version, generated_at</td></tr>
+    </table>
+    <p>Each item in <code>findings</code>:</p>
+    <table class="mono">
+      <tr><th>Field</th><th>Type</th></tr>
+      <tr><td>rule_id</td><td>string, e.g. "TI001"</td></tr>
+      <tr><td>severity</td><td>"info" | "low" | "medium" | "high" | "critical"</td></tr>
+      <tr><td>category</td><td>"test-integrity" | "dependencies" | "sandbox" | "claims" | "error-handling" | "api-surface" | "safety"</td></tr>
+      <tr><td>file</td><td>string</td></tr>
+      <tr><td>line</td><td>integer, 0 when unknown</td></tr>
+      <tr><td>evidence</td><td>string, truncated to about 200 characters</td></tr>
+      <tr><td>message</td><td>string</td></tr>
+      <tr><td>suggestion</td><td>string</td></tr>
+    </table>
+    <p>
+      Findings are sorted by rule ID, then file, then line, so JSON
+      output is byte-identical across reruns. Nil slices render as
+      empty arrays, never <code>null</code>.
+    </p>
+    <p>Each item in <code>suppressed.entries</code>:</p>
+    <table class="mono">
+      <tr><th>Field</th><th>Type</th></tr>
+      <tr><td>rule_id</td><td>string</td></tr>
+      <tr><td>severity</td><td>"info" | "low" | "medium" | "high" | "critical"</td></tr>
+      <tr><td>file</td><td>string</td></tr>
+      <tr><td>line</td><td>integer, 0 when unknown</td></tr>
+      <tr><td>message</td><td>string</td></tr>
+      <tr><td>reason</td><td>string, empty for a bulk-generated baseline entry</td></tr>
+      <tr><td>expires</td><td>string, empty when the entry never expires</td></tr>
+      <tr><td>expired</td><td>boolean</td></tr>
+      <tr><td>source</td><td>"baseline" | "policy" (schema version 7)</td></tr>
+    </table>
+    <pre><code>{
+  "schema_version": 7,
+  "score": 40,
+  "verdict": "fail",
+  "findings": [
+    {
+      "rule_id": "DEP001",
+      "severity": "critical",
+      "category": "dependencies",
+      "file": "requirements.txt",
+      "line": 2,
+      "evidence": "requests-toolkit-pro",
+      "message": "The new dependency requests-toolkit-pro does not exist in PyPI.",
+      "suggestion": "Remove the dependency or fix the typo."
+    }
+  ],
+  "checks_run": ["test-integrity", "dependencies", "sandbox"],
+  "checks_skipped": [{"name": "claims", "reason": "no --claims, --session, or commit messages given"}],
+  "coverage": {"available": false, "reason": "no coverage tool detected", "head_percent": 0, "has_base": false, "base_percent": 0, "delta_percent": 0},
+  "suppressed": {"count": 1, "entries": [
+    {"rule_id": "TI012", "severity": "medium", "file": "flaky_test.go", "line": 12,
+     "message": "A retry was added to an existing test.", "reason": "flaky under load, tracked in issue #142",
+     "expires": "2026-12-01", "expired": false, "source": "policy"}
+  ]},
+  "meta": {"repo": "/home/you/project", "base": "7db5cfb", "head": "worktree", "version": "v0.1.0", "generated_at": "2026-08-26T12:00:00Z"}
+}</code></pre>
+
+    <h2>SARIF (--format sarif)</h2>
+    <p>
+      SARIF 2.1.0, so findings can upload straight into GitHub code
+      scanning or any other SARIF-reading tool. One run, one tool
+      driver named <code>paranoid</code>, one <code>reportingDescriptor</code>
+      per registered rule (id, short and full description, a
+      <code>helpUri</code> pointing at that rule's anchor in
+      <code>docs/rules.md</code> on the main branch), and one result
+      per finding.
+    </p>
+    <table>
+      <tr><th>paranoid severity</th><th>SARIF level</th></tr>
+      <tr><td>critical, high</td><td>error</td></tr>
+      <tr><td>medium</td><td>warning</td></tr>
+      <tr><td>low, info</td><td>note</td></tr>
+    </table>
+    <p>
+      The original severity is preserved in
+      <code>properties.severity</code> on the result even after it is
+      mapped to a SARIF level. Score, verdict, checks run, checks
+      skipped, and the suppressed block all ride along in
+      <code>runs[0].properties</code>, since SARIF has no first-class
+      concept that matches paranoid's own report shape. Coverage is
+      not included in SARIF properties.
+    </p>
+    <p>
+      SARIF is versioned by the SARIF spec itself, not by
+      <code>schema_version</code>: a JSON report schema bump never
+      forces a SARIF shape change, and the reverse is true too. See
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a> for the
+      upload-sarif workflow example.
+    </p>
+
+    <h2>fix-prompt's own JSON schema</h2>
+    <p>
+      <code>paranoid fix-prompt --format json</code> emits a
+      completely separate artifact with its own versioned schema at
+      <a href="https://github.com/alainrk/paranoid/blob/main/docs/schema/fix-prompt-v1.schema.json">docs/schema/fix-prompt-v1.schema.json</a>,
+      currently version 1, independent of the verify report's schema
+      version. See <a href="fix-prompt.html">fix-prompt</a>.
+    </p>
+    <pre><code>{
+  "schema_version": 1,
+  "instructions": [
+    {
+      "rule_id": "TI001",
+      "severity": "critical",
+      "file": "internal/calc/calc_test.go",
+      "line": 0,
+      "instruction": "Restore the deleted test file at internal/calc/calc_test.go; do not delete a test to make the suite pass."
+    }
+  ],
+  "notes": []
+}</code></pre>
+
+    <h2>The history envelope, version 1</h2>
+    <p>
+      <code>verify --save</code> writes each report to
+      <code>.paranoid/history/</code>, wrapped in a small envelope with
+      its own <code>history_version</code> (currently 1), independent
+      of both the verify schema and the fix-prompt schema:
+      <code>{history_version, report}</code>, where <code>report</code>
+      is the exact same object <code>--format json</code> would print
+      for that run. <code>paranoid history --format json</code> emits a
+      third, derived shape, a per-run series for scripting, also
+      carrying its own <code>history_version</code>. See
+      <a href="history.html">History</a> for both shapes in full,
+      an example of each, and how the HTML trend view is built from
+      them.
+    </p>
+
+    <div class="card">
+      <p>
+        Both schema files are checked in and both are tested: a
+        rendered report that does not match its schema fails the build.
+        If your own tooling parses these formats, pin to a schema
+        version and treat an unexpected <code>schema_version</code> as
+        an error, the same way <code>fix-prompt --report</code> does.
+      </p>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

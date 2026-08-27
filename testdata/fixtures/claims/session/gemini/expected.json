@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "CLM001", "severity": "medium", "category": "claims", "file": "schemas/response.json", "line": 0}
+  ]
+}

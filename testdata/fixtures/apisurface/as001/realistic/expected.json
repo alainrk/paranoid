@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "AS001", "severity": "high", "category": "api-surface", "file": "internal/client/retry.go", "line": 0}
+  ]
+}

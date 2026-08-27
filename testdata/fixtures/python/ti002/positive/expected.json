@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "TI002", "severity": "high", "category": "test-integrity", "file": "test_calc.py", "line": 0}
+  ]
+}

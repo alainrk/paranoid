@@ -1,0 +1,5 @@
+[project]
+name = "reporter"
+dependencies = [
+  "click>=8",
+]

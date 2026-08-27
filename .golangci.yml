@@ -1,0 +1,23 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - revive
+    - gosec
+  exclusions:
+    rules:
+      # Test helpers run a fixed git binary on temp dirs; the gosec
+      # subprocess and permission warnings do not apply there.
+      - path: _test\.go
+        linters:
+          - gosec
+      # The repository layout is fixed and includes the
+      # analyze/testintegrity/common package.
+      - path: internal/analyze/testintegrity/common/
+        text: "avoid meaningless package names"
+        linters:
+          - revive

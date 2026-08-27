@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "SF003", "severity": "high", "category": "safety", "file": ".gitignore", "line": 2}
+  ]
+}

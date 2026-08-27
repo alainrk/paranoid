@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paranoid history</title>
+<style>
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 2rem; color: #1c1914; background: #f5f2ea; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #d8d2c2; font-size: 0.85rem; }
+  th { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; color: #4f4a40; }
+  .verdict-pass { color: #1d6b45; font-weight: 600; }
+  .verdict-warn { color: #9a6a00; font-weight: 600; }
+  .verdict-fail { color: #b23a1d; font-weight: 600; }
+  .chart { margin-top: 0.5rem; }
+  .cat-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid #d8d2c2; }
+  .cat-name { width: 160px; font-size: 0.85rem; }
+  .cat-latest { width: 40px; text-align: right; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>paranoid history</h1>
+<p>3 run(s).</p>
+
+<h2>Score over time</h2>
+<div class="chart"><svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="score over time"><rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/><line x1="40" y1="220.00" x2="730" y2="220.00" stroke="#e0e0e0" stroke-width="1"/><text x="34" y="220.00" font-size="11" fill="#666666" text-anchor="end" dominant-baseline="middle">0</text><line x1="40" y1="170.00" x2="730" y2="170.00" stroke="#e0e0e0" stroke-width="1"/><text x="34" y="170.00" font-size="11" fill="#666666" text-anchor="end" dominant-baseline="middle">25</text><line x1="40" y1="120.00" x2="730" y2="120.00" stroke="#e0e0e0" stroke-width="1"/><text x="34" y="120.00" font-size="11" fill="#666666" text-anchor="end" dominant-baseline="middle">50</text><line x1="40" y1="70.00" x2="730" y2="70.00" stroke="#e0e0e0" stroke-width="1"/><text x="34" y="70.00" font-size="11" fill="#666666" text-anchor="end" dominant-baseline="middle">75</text><line x1="40" y1="20.00" x2="730" y2="20.00" stroke="#e0e0e0" stroke-width="1"/><text x="34" y="20.00" font-size="11" fill="#666666" text-anchor="end" dominant-baseline="middle">100</text><line x1="40" y1="60.00" x2="730" y2="60.00" stroke="#bbbbbb" stroke-width="1" stroke-dasharray="4 3"/><line x1="40" y1="120.00" x2="730" y2="120.00" stroke="#bbbbbb" stroke-width="1" stroke-dasharray="4 3"/><polyline points="40.00,80.00 385.00,20.00 730.00,140.00 " fill="none" stroke="#2a6ebb" stroke-width="2"/><circle cx="40.00" cy="80.00" r="3.5" fill="#9a6a00"/><text x="40.00" y="236" font-size="10" fill="#666666" text-anchor="middle">2026-01-01</text><circle cx="385.00" cy="20.00" r="3.5" fill="#1d6b45"/><text x="385.00" y="236" font-size="10" fill="#666666" text-anchor="middle">2026-01-08</text><circle cx="730.00" cy="140.00" r="3.5" fill="#b23a1d"/><text x="730.00" y="236" font-size="10" fill="#666666" text-anchor="middle">2026-01-15</text></svg></div>
+
+<h2>Runs</h2>
+
+<table>
+<tr><th>Date</th><th>Base..Head</th><th>Score</th><th>Verdict</th><th>Findings by category</th></tr>
+<tr>
+<td>2026-01-01</td>
+<td>aaaaaaaaaaaa..worktree</td>
+<td>70</td>
+<td class="verdict-warn">warn</td>
+<td>dependencies: 1, test-integrity: 2</td>
+</tr>
+<tr>
+<td>2026-01-08</td>
+<td>aaaaaaaaaaaa..worktree</td>
+<td>100</td>
+<td class="verdict-pass">pass</td>
+<td>none</td>
+</tr>
+<tr>
+<td>2026-01-15</td>
+<td>aaaaaaaaaaaa..worktree</td>
+<td>40</td>
+<td class="verdict-fail">fail</td>
+<td>safety: 1</td>
+</tr>
+</table>
+
+
+<h2>Findings by category over time</h2>
+<div class="cat-row">
+<span class="cat-name">dependencies</span>
+<svg viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="finding count per run"><polyline points="3.00,3.00 60.00,25.00 117.00,25.00 " fill="none" stroke="#2a6ebb" stroke-width="1.5"/></svg>
+<span class="cat-latest">0</span>
+</div>
+<div class="cat-row">
+<span class="cat-name">safety</span>
+<svg viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="finding count per run"><polyline points="3.00,25.00 60.00,25.00 117.00,3.00 " fill="none" stroke="#2a6ebb" stroke-width="1.5"/></svg>
+<span class="cat-latest">1</span>
+</div>
+<div class="cat-row">
+<span class="cat-name">test-integrity</span>
+<svg viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="finding count per run"><polyline points="3.00,3.00 60.00,25.00 117.00,25.00 " fill="none" stroke="#2a6ebb" stroke-width="1.5"/></svg>
+<span class="cat-latest">0</span>
+</div>
+
+</body>
+</html>

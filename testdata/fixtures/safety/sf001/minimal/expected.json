@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "SF001", "severity": "high", "category": "safety", "file": "client.go", "line": 6}
+  ]
+}

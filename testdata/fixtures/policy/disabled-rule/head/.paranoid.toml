@@ -1,0 +1,3 @@
+[[disable]]
+rule = "TI001"
+reason = "flaky test tracked separately in issue #42"

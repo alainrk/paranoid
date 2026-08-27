@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, verify and its flags</title>
+<meta name="description" content="Every flag on paranoid verify, taken from the command's own --help output.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .note { border-left: 3px solid var(--accent); padding-left: 16px; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html" class="on">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Core</span>
+    <h1>verify and its flags</h1>
+    <p class="lede">
+      <code>paranoid verify [path]</code> is the main command. It runs
+      every check, scores the result, and prints a report. Everything
+      below is taken from <code>paranoid verify --help</code> on this
+      branch.
+    </p>
+
+    <h2>What it does, in order</h2>
+    <p>On the base-to-head diff, in this order:</p>
+    <ol>
+      <li><strong>Test integrity.</strong> Go via the real Go parser; Python and JS/TS via line heuristics. Flags deleted tests, weakened assertions, new skips, tautologies, renames that hide a test from the runner, new mocking, new retries, new sleeps, and stretched timeouts. Test and CI configuration files get their own check.</li>
+      <li><strong>Dependency consistency.</strong> New imports cross-checked against manifests (go.mod, package.json, requirements.txt, pyproject.toml, Cargo.toml).</li>
+      <li><strong>Dependency registries.</strong> New packages looked up in npm, PyPI, crates.io, and the Go module proxy. Skipped with <code>--offline</code>.</li>
+      <li><strong>Error handling.</strong> Every changed non-test source file (Go, Python, JS/TS), for swallowed or discarded errors.</li>
+      <li><strong>Clean-room test run.</strong> The suite reruns in a container with no network. See <a href="sandbox.html">Sandbox &amp; coverage</a>.</li>
+      <li><strong>Claims.</strong> Only when <code>--claims</code> or <code>--session</code> is given, or commit messages are used as a fallback. See <a href="sessions-claims.html">Sessions &amp; claims</a>.</li>
+      <li><strong>API surface.</strong> Only when claims were given: public symbols removed while the claims say a fix or feature landed.</li>
+      <li><strong>Safety controls.</strong> Every changed file in the diff, not just source: TLS verification disabled, auth removed, a tracked path hidden by .gitignore, hook config changed, CI permissions widened.</li>
+      <li><strong>Baseline suppression.</strong> Findings matching an unexpired entry in <code>.paranoid-baseline.json</code> move to a suppressed section and out of the score. See <a href="baseline.html">Baseline &amp; suppressions</a>.</li>
+    </ol>
+    <p>
+      Unless <code>--no-policy</code> is set, a <code>.paranoid.toml</code>
+      at the repo root feeds three of the steps above: a
+      <code>[[disable]]</code> entry suppresses a rule the same way step
+      9 does, a <code>[sandbox]</code> image pin is used by step 5
+      unless <code>--sandbox-image</code> is given, and
+      <code>fail-under</code>/<code>strict</code> act as this repo's own
+      defaults, beneath the matching flag. See
+      <a href="policy.html">Team policy file</a>.
+    </p>
+
+    <h2>Flags</h2>
+    <div class="twrap">
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--base string</td><td>merge-base with the default branch, else HEAD~1</td><td>State before the agent worked</td></tr>
+      <tr><td>--head string</td><td>working tree</td><td>State after the agent worked</td></tr>
+      <tr><td>--format string</td><td>text</td><td>Report format: text, md, json, or sarif</td></tr>
+      <tr><td>--output string</td><td>stdout</td><td>Write the report to a file instead</td></tr>
+      <tr><td>--fail-under int</td><td>50, or .paranoid.toml's fail-under when set</td><td>Exit non-zero if the score is below this</td></tr>
+      <tr><td>--strict</td><td>off, or .paranoid.toml's strict when set</td><td>Treat a warn verdict as failure</td></tr>
+      <tr><td>--offline</td><td>off</td><td>Skip all registry lookups (DEP001 to DEP004 reported as skipped)</td></tr>
+      <tr><td>--sandbox string</td><td>auto</td><td>Container runtime for the clean-room run: auto, docker, podman, or none</td></tr>
+      <tr><td>--sandbox-image string</td><td>suite default</td><td>Override the container image (must include coverage tooling for SBX005: go, pytest-cov if the project already depends on it, or jest/vitest)</td></tr>
+      <tr><td>--sandbox-timeout duration</td><td>10m</td><td>Kill the clean-room run after this long</td></tr>
+      <tr><td>--compare-base</td><td>off</td><td>Also run the suite at base and compare executed test counts (SBX003) and coverage (SBX005)</td></tr>
+      <tr><td>--claims string</td><td>none</td><td>Free-text file with the agent's summary</td></tr>
+      <tr><td>--session string</td><td>none</td><td>Agent session file (Claude Code, Codex CLI, Gemini CLI, Aider, or Cursor); format is auto-detected</td></tr>
+      <tr><td>--baseline string</td><td>.paranoid-baseline.json at the repo root, when present</td><td>Baseline file to load instead of the auto-detected one</td></tr>
+      <tr><td>--no-baseline</td><td>off</td><td>Ignore any baseline file, including the auto-detected one</td></tr>
+      <tr><td>--no-policy</td><td>off</td><td>Ignore .paranoid.toml, even when present at the repo root</td></tr>
+      <tr><td>--sign[=local|keyless]</td><td>off</td><td>Sign the report: bare or =local for the local ed25519 key, =keyless for cosign; requires --format json and --output</td></tr>
+      <tr><td>--trailer</td><td>off</td><td>Print "Audited-by: paranoid score=NN verdict=V" as the last line on stdout</td></tr>
+      <tr><td>--badge string</td><td>none</td><td>Write a shields.io endpoint JSON badge to this file</td></tr>
+    </table>
+    </div>
+    <p>
+      <code>--claude-session &lt;file&gt;</code> is a hidden alias for
+      <code>--session</code>.
+    </p>
+    <p>
+      <code>--base</code> and <code>--head</code> accept anything
+      <code>git rev-parse</code> resolves: a SHA, a branch, a tag,
+      <code>HEAD~3</code>, <code>origin/main</code>.
+    </p>
+
+    <div class="card">
+      <p>
+        <strong>Text output</strong> uses color only on a real
+        terminal and respects <code>NO_COLOR</code>. <strong>JSON
+        output</strong> follows a versioned schema and is
+        byte-identical across reruns of the same input. See
+        <a href="report-schema.html">Report &amp; schema</a>.
+      </p>
+    </div>
+
+    <h2>Related commands</h2>
+    <p>
+      <code>paranoid baseline [path]</code> accepts the same
+      <code>--base</code>, <code>--head</code>, <code>--offline</code>,
+      <code>--sandbox</code>, <code>--sandbox-image</code>,
+      <code>--sandbox-timeout</code>, and <code>--compare-base</code>
+      flags as <code>verify</code>. It always writes a full snapshot to
+      <code>.paranoid-baseline.json</code> at the repo root. See
+      <a href="baseline.html">Baseline &amp; suppressions</a>.
+    </p>
+    <p>
+      <code>paranoid fix-prompt [path]</code> accepts the same
+      pipeline flags as <code>verify</code>, plus its own
+      <code>--report</code>, <code>--format</code>, and
+      <code>--output</code>. See
+      <a href="fix-prompt.html">fix-prompt</a>.
+    </p>
+    <p>
+      <code>paranoid attest keygen</code> and <code>paranoid attest
+      verify</code> generate a signing key and check a signature made
+      by <code>--sign</code>. See <a href="attest.html">Signing &amp;
+      attest</a>.
+    </p>
+    <p>
+      <code>paranoid rules</code> and <code>paranoid version</code>
+      take no flags beyond <code>--help</code>. <code>paranoid
+      completion</code> prints a shell autocompletion script (bash,
+      zsh, fish, or PowerShell); see its own <code>--help</code> for
+      the shell-specific usage, generated by Cobra.
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

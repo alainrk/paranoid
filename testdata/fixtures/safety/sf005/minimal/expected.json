@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "SF005", "severity": "high", "category": "safety", "file": ".github/workflows/ci.yml", "line": 3}
+  ]
+}

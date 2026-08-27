@@ -1,0 +1,6 @@
+{
+  "findings": [
+    {"rule_id": "TI003", "severity": "high", "category": "test-integrity", "file": "calc_test.go", "line": 5},
+    {"rule_id": "TI010", "severity": "medium", "category": "test-integrity", "file": "calc_test.go", "line": 0}
+  ]
+}

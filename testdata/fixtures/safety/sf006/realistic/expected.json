@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "SF006", "severity": "high", "category": "safety", "file": ".claude/settings.json", "line": 8}
+  ]
+}

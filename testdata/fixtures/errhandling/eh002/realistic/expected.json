@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "EH002", "severity": "medium", "category": "error-handling", "file": "notifications.js", "line": 12}
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "TI004", "severity": "high", "category": "test-integrity", "file": "net_test.go", "line": 1}
+  ]
+}

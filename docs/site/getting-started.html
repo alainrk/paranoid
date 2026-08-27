@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, getting started</title>
+<meta name="description" content="Install paranoid and run your first verify.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .note { border-left: 3px solid var(--accent); padding-left: 16px; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html" class="on">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Getting started</span>
+    <h1>Install and run your first verify</h1>
+    <p class="lede">
+      paranoid is a single static binary. No account, no server, no
+      setup beyond installing it and having git on your machine.
+    </p>
+
+    <h2>Install</h2>
+    <ul>
+      <li>
+        <strong>Binaries.</strong> Grab the archive for your platform from
+        <a href="https://github.com/alainrk/paranoid/releases">Releases</a>
+        (Linux amd64/arm64, macOS amd64/arm64, Windows amd64).
+      </li>
+      <li>
+        <strong>Install script.</strong>
+        <pre><code>curl -fsSL https://raw.githubusercontent.com/alainrk/paranoid/main/scripts/install.sh | sh</code></pre>
+      </li>
+      <li>
+        <strong>Go install.</strong>
+        <pre><code>go install github.com/alainrk/paranoid/cmd/paranoid@latest</code></pre>
+      </li>
+      <li>
+        <strong>From source.</strong> Clone the repo, then <code>make build</code>
+        (needs Go 1.26 or later and git 2.30 or later).
+      </li>
+    </ul>
+
+    <h2>Run it</h2>
+    <p>
+      From inside a repository an agent has touched, run:
+    </p>
+    <pre><code>paranoid verify</code></pre>
+    <p>
+      You do not need to commit anything first. <code>--head</code>
+      defaults to your working tree exactly as it sits on disk,
+      uncommitted and staged changes included. <code>--base</code>
+      defaults to the merge-base with your default branch, or
+      <code>HEAD~1</code> if there is no default branch to compare
+      against.
+    </p>
+    <pre><code>$ paranoid verify
+
+paranoid v0.1.0
+repo: /home/you/project
+base: 7db5cfbeaacf
+head: worktree
+
+score: 40/100  verdict: fail
+
+dependencies (1 finding)
+
+  DEP001  critical  requirements.txt:2
+      The new dependency requests-toolkit-pro does not exist in PyPI.
+
+test-integrity (2 findings)
+
+  TI001  critical  test_division.py
+      A test file that existed at base is deleted at head.
+
+  TI004  high  test_addition.py:10
+      A skip was added to an existing test.
+</code></pre>
+    <p>
+      <code>head: worktree</code> means your working tree as it is on
+      disk. The exit code follows the verdict (see
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>), so the
+      same command gates CI.
+    </p>
+
+    <h2>Check the agent's summary too</h2>
+    <p>
+      Add <code>--claims summary.md</code> (any free-text file) or
+      <code>--session &lt;file&gt;</code> (an agent session file; see
+      <a href="sessions-claims.html">Sessions &amp; claims</a> for the
+      full list of supported agents). With neither flag, claims are
+      read from the git range's commit messages.
+    </p>
+
+    <h2>Common ways to run it</h2>
+    <p>Both <code>--base</code> and <code>--head</code> accept anything <code>git rev-parse</code> resolves: a branch, a tag, a SHA, <code>HEAD~3</code>, <code>origin/main</code>.</p>
+    <table class="mono">
+      <tr><th>Situation</th><th>Command</th></tr>
+      <tr><td>Nothing committed yet</td><td>paranoid verify</td></tr>
+      <tr><td>Before merging a feature branch</td><td>paranoid verify --base main</td></tr>
+      <tr><td>One specific commit</td><td>paranoid verify --base abc1234~1 --head abc1234</td></tr>
+      <tr><td>Last 30 commits</td><td>paranoid verify --base HEAD~30 --head HEAD</td></tr>
+      <tr><td>Between two releases</td><td>paranoid verify --base v0.3.0 --head v0.4.0</td></tr>
+      <tr><td>A teammate's unfetched branch</td><td>git fetch origin<br>paranoid verify --base origin/main --head origin/agent-branch</td></tr>
+    </table>
+
+    <h2>Adopting on an existing repo</h2>
+    <p>
+      On a repository that has never run paranoid, <code>verify</code>
+      reports every finding in the range, not only the latest change.
+      Run <code>paranoid baseline</code> once to snapshot the current
+      findings; later runs then only fail on new ones. See
+      <a href="baseline.html">Baseline &amp; suppressions</a>.
+    </p>
+
+    <h2>Next</h2>
+    <p>
+      <a href="verify.html">Read every verify flag &rarr;</a><br>
+      <a href="rules.html">See what paranoid checks &rarr;</a><br>
+      <a href="exit-codes-ci.html">Wire it into CI &rarr;</a>
+    </p>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

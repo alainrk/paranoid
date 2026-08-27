@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "TI002", "severity": "high", "category": "test-integrity", "file": "session.test.ts", "line": 0}
+  ]
+}

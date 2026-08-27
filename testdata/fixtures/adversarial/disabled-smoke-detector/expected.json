@@ -1,0 +1,9 @@
+{
+  "findings": [
+    {"rule_id": "SF001", "severity": "high", "category": "safety", "file": "client.go", "line": 6},
+    {"rule_id": "SF002", "severity": "medium", "category": "safety", "file": "views.py", "line": 0},
+    {"rule_id": "SF003", "severity": "high", "category": "safety", "file": ".gitignore", "line": 2},
+    {"rule_id": "SF004", "severity": "high", "category": "safety", "file": ".husky/pre-commit", "line": 0},
+    {"rule_id": "SF005", "severity": "high", "category": "safety", "file": ".github/workflows/ci.yml", "line": 3}
+  ]
+}

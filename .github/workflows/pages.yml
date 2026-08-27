@@ -1,0 +1,44 @@
+name: pages
+
+# Publishes the website to GitHub Pages: the landing page at the repo
+# root and the docs under docs/site/. The artifact keeps the same layout
+# as the repo, so every relative link works both locally and deployed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - docs/site/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Assemble site
+        run: |
+          mkdir -p _site/docs
+          cp index.html _site/index.html
+          cp -R docs/site _site/docs/site
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

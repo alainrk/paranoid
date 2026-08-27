@@ -1,0 +1,6 @@
+{
+  "findings": [
+    {"rule_id": "SF006", "severity": "high", "category": "safety", "file": ".paranoid-baseline.json", "line": 0},
+    {"rule_id": "TI001", "severity": "critical", "category": "test-integrity", "file": "calc_test.go", "line": 0}
+  ]
+}

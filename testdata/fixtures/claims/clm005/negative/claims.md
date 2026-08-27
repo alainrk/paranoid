@@ -1,0 +1,1 @@
+Implemented the reports package: added internal/reports/summary.go, internal/reports/export.go, internal/reports/schedule.go, internal/reports/format.go, internal/reports/cache.go, and internal/reports/loader.go.

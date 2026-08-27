@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "EH003", "severity": "medium", "category": "error-handling", "file": "app.py", "line": 4}
+  ]
+}

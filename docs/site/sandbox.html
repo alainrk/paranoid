@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid docs, sandbox and coverage</title>
+<meta name="description" content="How the clean-room test rerun works, the sandbox flags, and best-effort coverage collection.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea; --paper-deep: #ece8dc; --ink: #1c1914; --ink-soft: #4f4a40;
+    --rule: #d8d2c2; --accent: #b23a1d; --pass: #1d6b45; --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: var(--accent); }
+  a:hover { color: var(--ink); }
+  code, pre { font-family: var(--mono); }
+  code { background: var(--paper-deep); border: 1px solid var(--rule); padding: 1px 6px; font-size: 0.85em; border-radius: 2px; }
+  pre { border: 1px solid var(--ink); background: #14110c; color: #e9e4d6; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 18px 0; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark .dot { color: var(--accent); }
+  .bar nav { display: flex; gap: 22px; }
+  .bar nav a { text-decoration: none; color: var(--ink-soft); }
+  .bar nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { .bar nav a.hide-sm { display: none; } }
+  .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px; display: flex; gap: 48px; align-items: flex-start; }
+  .side { width: 230px; flex: none; position: sticky; top: 62px; padding: 36px 0 60px; font-family: var(--mono); font-size: 13.5px; }
+  .side .grp { margin: 0 0 22px; }
+  .side .grp-label { text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: var(--ink-soft); margin: 0 0 8px; }
+  .side a { display: block; text-decoration: none; color: var(--ink-soft); padding: 4px 0; border-left: 2px solid transparent; padding-left: 10px; margin-left: -11px; }
+  .side a:hover { color: var(--ink); }
+  .side a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  @media (max-width: 900px) { .side { display: none; } }
+  main.content { flex: 1; min-width: 0; padding: 40px 0 90px; max-width: 760px; }
+  .kicker { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(32px, 5vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; margin: 12px 0 0; }
+  h2 { font-size: 26px; font-weight: 600; margin: 46px 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); }
+  main.content > h2:first-of-type { border-top: none; margin-top: 30px; }
+  h3 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; }
+  p { margin: 14px 0; color: var(--ink); max-width: 68ch; }
+  .lede { font-size: 19px; color: var(--ink-soft); margin: 20px 0 0; max-width: 62ch; }
+  ul, ol { margin: 14px 0 14px 22px; }
+  li { margin: 6px 0; max-width: 66ch; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  table.mono { font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+  .twrap { overflow-x: auto; margin: 18px 0; }
+  .twrap table { margin: 0; min-width: 480px; }
+  .card { border: 1px solid var(--ink); background: var(--paper-deep); padding: 18px 20px; margin: 22px 0; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  footer { margin: 60px 0 0; border-top: 1px solid var(--ink); padding: 30px 24px 50px; }
+  .foot { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+  .foot a { text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="side">
+    <div class="grp">
+      <div class="grp-label">Start</div>
+      <a href="index.html">Overview</a>
+      <a href="getting-started.html">Getting started</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Core</div>
+      <a href="verify.html">verify &amp; flags</a>
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>
+      <a href="rules.html">Rules</a>
+      <a href="policy.html">Team policy file</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Report</div>
+      <a href="report-schema.html">Report &amp; schema</a>
+      <a href="baseline.html">Baseline &amp; suppressions</a>
+      <a href="history.html">History</a>
+      <a href="sessions-claims.html">Sessions &amp; claims</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Checks</div>
+      <a href="sandbox.html" class="on">Sandbox &amp; coverage</a>
+      <a href="fix-prompt.html">fix-prompt</a>
+      <a href="watch.html">watch</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Trust</div>
+      <a href="attest.html">Signing &amp; attest</a>
+    </div>
+    <div class="grp">
+      <div class="grp-label">Integrate</div>
+      <a href="integrations.html">Integrations</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <span class="kicker">Checks</span>
+    <h1>Sandbox and coverage</h1>
+    <p class="lede">
+      The clean-room check reruns the test suite in a container with
+      no network, from a fresh export of the head tree, and collects
+      coverage where the tooling allows.
+    </p>
+
+    <h2>How it works</h2>
+    <p>
+      With docker or podman available, <code>verify</code> copies the
+      head state into a container, installs dependencies with the
+      network on, then runs the test suite with the network off
+      (<code>--network=none</code>). Two container runs share one
+      named volume: the prep run mounts the export read-only and
+      installs dependencies with the network on; the test run mounts
+      only the volume and uses <code>--network=none</code>. The volume
+      is removed afterwards.
+    </p>
+    <p>Supported suites, detected automatically:</p>
+    <ul>
+      <li><strong>Go:</strong> <code>go test ./...</code> when go.mod exists (Go version read from go.mod).</li>
+      <li><strong>Python:</strong> pytest or unittest, in a throwaway venv.</li>
+      <li><strong>JS/TS:</strong> the package.json test script, via npm, yarn, or pnpm.</li>
+    </ul>
+    <p>
+      <code>--sandbox none</code> opts out explicitly and records the
+      check as skipped, no finding attached. When <code>auto</code>
+      finds no container runtime or no recognizable suite, the report
+      says so and SBX004 marks that nothing was verified. Suites that
+      need the network fail in the clean room by design.
+    </p>
+
+    <h2>Sandbox flags on verify</h2>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--sandbox</td><td>auto</td><td>auto, docker, podman, or none</td></tr>
+      <tr><td>--sandbox-image</td><td>suite default</td><td>Override the container image</td></tr>
+      <tr><td>--sandbox-timeout</td><td>10m</td><td>Kill the run after this long</td></tr>
+      <tr><td>--compare-base</td><td>off</td><td>Also run the suite at base; enables SBX003 and SBX005</td></tr>
+    </table>
+
+    <h2>Sandbox rules (SBX)</h2>
+    <table>
+      <tr><th>Rule</th><th>Severity</th><th>What it catches</th></tr>
+      <tr><td>SBX001</td><td>critical</td><td>The test suite fails when rerun in a clean container</td></tr>
+      <tr><td>SBX002</td><td>high</td><td>The clean run skipped tests and the diff added skip markers</td></tr>
+      <tr><td>SBX003</td><td>medium</td><td>With --compare-base, fewer tests executed at head than at base</td></tr>
+      <tr><td>SBX004</td><td>info</td><td>The clean-room check could not run, so nothing was verified</td></tr>
+      <tr><td>SBX005</td><td>medium</td><td>With --compare-base, total coverage dropped by more than 5 points</td></tr>
+    </table>
+    <p>Full rule text is on the <a href="rules.html#sandbox">rules page</a>.</p>
+
+    <h2>Coverage collection</h2>
+    <p>
+      The same test run also collects total test coverage, best
+      effort, without ever changing whether the suite passed or
+      failed. If coverage parsing fails for any reason, the SBX001 to
+      SBX004 outcome is untouched; coverage just reports itself
+      unavailable.
+    </p>
+    <ul>
+      <li><strong>Go:</strong> always. <code>go test -coverprofile</code> plus <code>go tool cover -func</code> reads the real per-statement total from the profile.</li>
+      <li><strong>Python:</strong> only when <code>pytest-cov</code> is already importable in the prepared environment. This tool never installs it; a project that does not already depend on it gets no Python coverage number.</li>
+      <li><strong>JS/TS:</strong> only when the <code>test</code> script in package.json names jest or vitest. <code>--coverage --coverageReporters=json-summary</code>, read from <code>coverage-summary.json</code> (Istanbul's default location). Other runners (mocha, ava, a custom script) get no coverage flags at all.</li>
+    </ul>
+    <p>
+      With <code>--compare-base</code>, SBX005 fires when total
+      coverage at head is more than 5.0 percentage points below total
+      coverage at base. The report's <code>coverage</code> block
+      always exists, with an <code>available</code> flag and a
+      <code>reason</code> when it is false; see
+      <a href="report-schema.html">Report &amp; schema</a> for the
+      exact fields.
+    </p>
+    <div class="card">
+      <p>
+        A custom <code>--sandbox-image</code> needs the matching
+        coverage tool already installed: Go's toolchain ships one;
+        Python needs <code>pytest-cov</code> in the project's own
+        dependencies; Node needs jest or vitest. Otherwise coverage is
+        reported as unavailable, the same as a missing container
+        runtime.
+      </p>
+    </div>
+
+    <h2>Limits</h2>
+    <ul>
+      <li>Coverage is best-effort and never affects the score by itself; only SBX005, and only with <code>--compare-base</code>, does.</li>
+      <li>Removing dead code lowers the denominator and can raise or lower the percentage either way; SBX005 is a signal to look, not proof of lost tests.</li>
+      <li>Windows sandbox support is out of scope today; it degrades to a skipped check.</li>
+    </ul>
+  </main>
+</div>
+
+<footer>
+  <div class="foot">
+    <span>paranoid docs &middot; generated from the code on this branch</span>
+    <span><a href="index.html">&larr; back to docs overview</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

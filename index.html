@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paranoid, verify your AI coding agents</title>
+<meta name="description" content="paranoid is a local CLI that audits agent-written diffs: test integrity, dependencies, error handling, safety controls, clean-room test runs, and claim verification.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f2ea;
+    --paper-deep: #ece8dc;
+    --ink: #1c1914;
+    --ink-soft: #4f4a40;
+    --rule: #d8d2c2;
+    --accent: #b23a1d;
+    --pass: #1d6b45;
+    --warn: #9a6a00;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--ink); color: var(--paper); }
+
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+
+  a { color: inherit; }
+  a:hover { color: var(--accent); }
+
+  /* ---------- top bar ---------- */
+  header {
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .bar {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 14px 0;
+    font-family: var(--mono); font-size: 14px;
+  }
+  .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; }
+  .mark .dot { color: var(--accent); }
+  nav { display: flex; gap: 26px; }
+  nav a { text-decoration: none; color: var(--ink-soft); }
+  nav a:hover { color: var(--accent); }
+  @media (max-width: 640px) { nav a.hide-sm { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 84px 0 0; }
+  .stamp {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-soft);
+    display: inline-flex; align-items: center; gap: 10px;
+    border: 1px solid var(--ink); padding: 6px 12px;
+  }
+  .stamp b { color: var(--accent); font-weight: 600; }
+  h1 {
+    font-size: clamp(44px, 7.2vw, 84px);
+    line-height: 1.02;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    margin: 34px 0 0;
+    max-width: 22ch;
+    text-wrap: balance;
+  }
+  h1 em { font-style: italic; color: var(--accent); font-weight: 500; }
+  .lede {
+    margin: 28px 0 0;
+    max-width: 58ch;
+    font-size: 21px;
+    color: var(--ink-soft);
+  }
+  .cta-row {
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch;
+    margin: 38px 0 0;
+  }
+  .install {
+    display: flex; align-items: center; gap: 14px;
+    border: 1px solid var(--ink);
+    background: var(--paper-deep);
+    padding: 13px 18px;
+    font-family: var(--mono); font-size: 14px;
+  }
+  .install code { white-space: nowrap; overflow-x: auto; }
+  .install button {
+    font-family: var(--mono); font-size: 12px;
+    border: 1px solid var(--ink); background: var(--paper);
+    padding: 4px 10px; cursor: pointer; color: var(--ink);
+  }
+  .install button:hover { background: var(--ink); color: var(--paper); }
+  .btn {
+    display: inline-flex; align-items: center;
+    border: 1px solid var(--ink);
+    background: var(--ink); color: var(--paper);
+    padding: 13px 22px;
+    font-family: var(--mono); font-size: 14px;
+    text-decoration: none;
+  }
+  .btn:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+
+  /* ---------- terminal report ---------- */
+  .report { margin: 64px 0 0; }
+  .term {
+    border: 1px solid var(--ink);
+    background: #14110c;
+    color: #e9e4d6;
+    box-shadow: 8px 8px 0 var(--paper-deep), 8px 8px 0 1px var(--rule);
+  }
+  .term-head {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #2e2a22;
+    padding: 10px 16px;
+    font-family: var(--mono); font-size: 12px; color: #8f8875;
+  }
+  .term pre {
+    padding: 22px 22px 26px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+  .t-dim { color: #8f8875; }
+  .t-crit { color: #ff6a45; font-weight: 600; }
+  .t-high { color: #ffb454; font-weight: 600; }
+  .t-fail { color: #ff6a45; font-weight: 600; }
+  .t-cmd { color: #e9e4d6; font-weight: 600; }
+  .t-sec { color: #b8b19c; }
+
+  /* ---------- stat strip ---------- */
+  .stats {
+    margin: 72px 0 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .stat { padding: 26px 20px 24px; border-left: 1px solid var(--rule); }
+  .stat:first-child { border-left: none; }
+  .stat b {
+    display: block;
+    font-family: var(--mono); font-weight: 600;
+    font-size: 30px; letter-spacing: -0.02em;
+  }
+  .stat span {
+    display: block; margin-top: 6px;
+    font-family: var(--mono); font-size: 12.5px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-soft);
+  }
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat:nth-child(3) { border-left: none; }
+    .stat:nth-child(n+3) { border-top: 1px solid var(--rule); }
+  }
+
+  /* ---------- sections ---------- */
+  section { padding: 96px 0 0; }
+  .sec-label {
+    font-family: var(--mono); font-size: 12.5px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600;
+  }
+  h2 {
+    font-size: clamp(30px, 4vw, 44px);
+    font-weight: 500; line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 14px 0 0;
+    text-wrap: balance;
+  }
+  .sec-intro { margin: 20px 0 0; max-width: 60ch; color: var(--ink-soft); }
+
+  /* problem list */
+  .problems { margin: 46px 0 0; border-top: 1px solid var(--ink); }
+  .problem {
+    display: grid; grid-template-columns: 90px 1fr 1.4fr; gap: 24px;
+    padding: 30px 0; border-bottom: 1px solid var(--rule);
+  }
+  .problem .num { font-family: var(--mono); font-size: 14px; color: var(--accent); }
+  .problem h3 { font-size: 23px; font-weight: 600; line-height: 1.2; }
+  .problem p { color: var(--ink-soft); font-size: 17.5px; }
+  @media (max-width: 760px) {
+    .problem { grid-template-columns: 48px 1fr; }
+    .problem p { grid-column: 2; }
+  }
+
+  /* checks */
+  .checks { margin: 46px 0 0; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .check {
+    border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink);
+    padding: 30px 28px 34px;
+    background: var(--paper);
+  }
+  .check:hover { background: var(--paper-deep); }
+  .check .rid {
+    font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--paper); background: var(--ink);
+    padding: 3px 8px; display: inline-block;
+  }
+  .check h3 { font-size: 24px; font-weight: 600; margin: 16px 0 0; }
+  .check p { margin: 10px 0 0; color: var(--ink-soft); font-size: 17px; }
+  .check .rc { margin: 14px 0 0; font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); }
+  @media (max-width: 760px) { .checks { grid-template-columns: 1fr; } }
+
+  /* verdict / CI */
+  .ci-grid { margin: 46px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  @media (max-width: 860px) { .ci-grid { grid-template-columns: 1fr; } }
+  table.codes {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--mono); font-size: 14px;
+  }
+  table.codes th, table.codes td {
+    text-align: left; padding: 12px 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.codes th {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-soft); font-weight: 600;
+    border-bottom: 1px solid var(--ink);
+  }
+  .v-pass { color: var(--pass); font-weight: 600; }
+  .v-warn { color: var(--warn); font-weight: 600; }
+  .v-fail { color: var(--accent); font-weight: 600; }
+  .yamlbox {
+    border: 1px solid var(--ink); background: var(--paper-deep);
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.7;
+  }
+  .yamlbox .yb-head {
+    border-bottom: 1px solid var(--rule); padding: 9px 16px;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  .yamlbox pre { padding: 18px 20px; overflow-x: auto; }
+  .yk { color: var(--accent); }
+
+  /* guarantees */
+  .vows { margin: 46px 0 0; border-top: 1px solid var(--ink); }
+  .vow {
+    display: grid; grid-template-columns: 260px 1fr; gap: 24px;
+    padding: 26px 0; border-bottom: 1px solid var(--rule);
+  }
+  .vow h3 { font-family: var(--mono); font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+  .vow p { color: var(--ink-soft); font-size: 17.5px; max-width: 62ch; }
+  @media (max-width: 700px) { .vow { grid-template-columns: 1fr; gap: 8px; } }
+
+  /* footer */
+  footer { margin: 96px 0 0; border-top: 1px solid var(--ink); padding: 44px 0 64px; }
+  .foot {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 28px;
+    font-family: var(--mono); font-size: 13.5px; color: var(--ink-soft);
+  }
+  .foot .col { display: flex; flex-direction: column; gap: 9px; }
+  .foot a { text-decoration: none; }
+  .foot .mark { color: var(--ink); font-size: 15px; }
+  .foot code {
+    background: var(--paper-deep); border: 1px solid var(--rule);
+    padding: 2px 7px; font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <a class="mark" href="#">paranoid<span class="dot">_</span></a>
+    <nav>
+      <a href="#checks" class="hide-sm">checks</a>
+      <a href="#loop" class="hide-sm">adoption</a>
+      <a href="#ci" class="hide-sm">ci</a>
+      <a href="#principles" class="hide-sm">principles</a>
+      <a href="docs/site/index.html">docs</a>
+      <a href="https://github.com/alainrk/paranoid">github &nearr;</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="hero">
+    <span class="stamp">Trust report <b>&bull;</b> for AI-written code</span>
+    <h1>AI writes the code. <em>paranoid</em> verifies it.</h1>
+    <p class="lede">
+      One command checks the diff for deleted or weakened tests, dependencies
+      that do not exist, swallowed errors, and claims not backed by the
+      change, then prints a scored report with an exit code you can gate
+      CI on.
+    </p>
+    <div class="cta-row">
+      <div class="install">
+        <code id="install-cmd">curl -fsSL https://raw.githubusercontent.com/alainrk/paranoid/main/scripts/install.sh | sh</code>
+        <button onclick="copyInstall(this)">copy</button>
+      </div>
+      <a class="btn" href="https://github.com/alainrk/paranoid">View source &nearr;</a>
+    </div>
+  </div>
+
+  <div class="report">
+    <div class="term">
+      <div class="term-head">
+        <span>~/project</span>
+        <span>after the agent, before the merge</span>
+      </div>
+      <pre>$ <span class="t-cmd">paranoid verify --base main --claims summary.md</span>
+
+paranoid v0.1.0
+<span class="t-dim">repo: /home/you/project
+base: 7db5cfbeaacf
+head: worktree</span>
+
+score: 40/100  verdict: <span class="t-fail">fail</span>
+
+<span class="t-sec">dependencies (1 finding)</span>
+
+  <span class="t-crit">DEP001  critical</span>  requirements.txt:2
+      The new dependency requests-toolkit-pro does not exist in PyPI.
+
+<span class="t-sec">test-integrity (2 findings)</span>
+
+  <span class="t-crit">TI001  critical</span>  test_division.py
+      A test file that existed at base is deleted at head.
+
+  <span class="t-high">TI004  high</span>  test_addition.py:10
+      A skip was added to an existing test.
+
+<span class="t-dim">exit status 2</span></pre>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>42</b><span>documented rules</span></div>
+    <div class="stat"><b>100%</b><span>deterministic by default</span></div>
+    <div class="stat"><b>1</b><span>static binary</span></div>
+    <div class="stat"><b>0&ndash;100</b><span>trust score</span></div>
+  </div>
+
+  <section id="problem">
+    <span class="sec-label">The problem</span>
+    <h2>What it looks for</h2>
+    <p class="sec-intro">
+      Three failure modes that show up in agent-authored patches and are
+      cheap to miss in review.
+    </p>
+    <div class="problems">
+      <div class="problem">
+        <span class="num">01</span>
+        <h3>Gamed tests</h3>
+        <p>A failing test is deleted, skipped, or rewritten into a tautology, so the suite passes without the code being fixed.</p>
+      </div>
+      <div class="problem">
+        <span class="num">02</span>
+        <h3>Hallucinated dependencies</h3>
+        <p>A new import names a package that does not exist, was published days ago, or is one typo away from a popular name.</p>
+      </div>
+      <div class="problem">
+        <span class="num">03</span>
+        <h3>Unbacked claims</h3>
+        <p>The summary states work (&ldquo;all tests pass&rdquo;, &ldquo;refactored the retry logic&rdquo;) that the diff and the test run do not back.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="checks">
+    <span class="sec-label">What it checks</span>
+    <h2>Seven categories, one score</h2>
+    <p class="sec-intro">
+      <code style="font-family: var(--mono); font-size: 15px;">paranoid verify</code>
+      compares the repository before and after the agent worked. Every finding
+      maps to a documented rule with a fixed ID and severity. All 42 rules
+      are listed with examples in the <a href="docs/site/rules.html">rule reference</a>.
+    </p>
+    <div class="checks">
+      <div class="check">
+        <span class="rid">TI &middot; 14 rules</span>
+        <h3>Test integrity</h3>
+        <p>Parses the test diff (Go with the real Go parser) and flags deleted tests, weakened assertions, new skip markers, tautologies, hidden renames, new mocking, new retries, new sleeps, stretched timeouts, and edits to CI and test configuration.</p>
+      </div>
+      <div class="check">
+        <span class="rid">DEP &middot; 5 rules</span>
+        <h3>Dependencies</h3>
+        <p>Cross-checks new imports against manifests, then looks up new packages on npm, PyPI, crates.io, and the Go proxy: nonexistent, brand new, nearly unused, or typosquatting a popular name.</p>
+      </div>
+      <div class="check">
+        <span class="rid">EH &middot; 5 rules</span>
+        <h3>Error handling</h3>
+        <p>Looks at every changed source file for errors made to disappear: a checked error newly discarded, an empty catch block, an except block that only passes, a no-op promise handler, and a return or raise turned into a log line.</p>
+      </div>
+      <div class="check">
+        <span class="rid">SBX &middot; 5 rules</span>
+        <h3>Clean-room test run</h3>
+        <p>Reruns the test suite in a container with the network disabled, and collects coverage where the tooling allows. Catches results that only held on the agent's machine, and coverage that quietly dropped.</p>
+      </div>
+      <div class="check">
+        <span class="rid">CLM &middot; 5 rules</span>
+        <h3>Claims</h3>
+        <p>Extracts concrete claims from the agent&rsquo;s summary, a session file from Claude Code, Codex, Gemini CLI, Aider, or Cursor, or the commit messages, and checks each one against the diff, the clean-room result, and the diff's overall radius.</p>
+      </div>
+      <div class="check">
+        <span class="rid">AS &middot; 2 rules</span>
+        <h3>API surface</h3>
+        <p>Diffs public symbols between base and head and flags a symbol removed while the claims say a fix or feature landed: green by deletion, one layer deeper than deleting the test.</p>
+      </div>
+      <div class="check">
+        <span class="rid">SF &middot; 6 rules</span>
+        <h3>Safety controls</h3>
+        <p>Scans every changed file for known patterns: TLS verification disabled, an auth check removed, a tracked path hidden by .gitignore, a git hook changed, CI permissions widened, or paranoid's own baseline and hook config edited. Pattern-based, not a security scanner.</p>
+      </div>
+      <div class="check">
+        <span class="rid">Score</span>
+        <h3>One score, clear thresholds</h3>
+        <p>Findings subtract from 100 by severity. The verdict and the exit code follow the score, so the same command works on your laptop and as a CI gate. Output as text, Markdown, schema-versioned JSON that is byte-identical across reruns, or SARIF for GitHub code scanning.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="loop">
+    <span class="sec-label">Adoption</span>
+    <h2>Baseline in, fix-prompt out</h2>
+    <p class="sec-intro">
+      Two commands for adopting paranoid in an existing repository and
+      feeding findings back to the agent.
+    </p>
+    <div class="vows">
+      <div class="vow">
+        <h3>paranoid baseline</h3>
+        <p>Point paranoid at a repo that has never run it before and it reports everything, not just today's change. Run <code>paranoid baseline</code> once to snapshot existing findings into <code>.paranoid-baseline.json</code>; only new findings fail CI from then on. See <a href="docs/site/baseline.html">Baseline &amp; suppressions &rarr;</a></p>
+      </div>
+      <div class="vow">
+        <h3>paranoid fix-prompt</h3>
+        <p><code>fix-prompt</code> renders the findings of a verify run into a deterministic instruction block you can paste back to the agent. See <a href="docs/site/fix-prompt.html">fix-prompt &rarr;</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="ci">
+    <span class="sec-label">CI usage</span>
+    <h2>Exit codes you can gate a merge on</h2>
+    <div class="ci-grid">
+      <table class="codes">
+        <tr><th>exit</th><th>verdict</th><th>meaning</th></tr>
+        <tr><td>0</td><td class="v-pass">pass</td><td>score 80 or higher</td></tr>
+        <tr><td>1</td><td class="v-warn">warn</td><td>score 50 to 79 (exit 2 with <span style="white-space: nowrap;">--strict</span>)</td></tr>
+        <tr><td>2</td><td class="v-fail">fail</td><td>score below 50, or below <span style="white-space: nowrap;">--fail-under</span></td></tr>
+        <tr><td>3</td><td>error</td><td>the tool itself failed, never a finding</td></tr>
+      </table>
+      <div class="yamlbox">
+        <div class="yb-head">.github/workflows/verify.yml</div>
+        <pre><span class="yk">- uses:</span> alainrk/paranoid/action@main
+  <span class="yk">with:</span>
+    <span class="yk">base:</span> ${{ github.base_ref }}
+    <span class="yk">fail-under:</span> 50</pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="principles">
+    <span class="sec-label">Principles</span>
+    <h2>How it's built</h2>
+    <div class="vows">
+      <div class="vow">
+        <h3>Local and private</h3>
+        <p>No telemetry, no analytics, no update checks. The only network use is the optional registry lookups, and --offline turns those off too.</p>
+      </div>
+      <div class="vow">
+        <h3>Deterministic by default</h3>
+        <p>No LLM as judge. The default pipeline is static analysis, so the same input produces the same report, byte for byte in JSON. You can diff reports and trust reruns.</p>
+      </div>
+      <div class="vow">
+        <h3>Fails soft</h3>
+        <p>A check that cannot run (no container runtime, no network, no recognizable test suite) is reported as skipped, and the run continues.</p>
+      </div>
+      <div class="vow">
+        <h3>Single static binary</h3>
+        <p>No CGO, no runtime dependencies beyond git, and docker or podman only if you want the clean room. Linux, macOS, and Windows.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div class="col">
+      <span class="mark">paranoid<span style="color: var(--accent);">_</span></span>
+      <span>Local, deterministic verification for agent-written diffs.</span>
+    </div>
+    <div class="col">
+      <span><code>go install github.com/alainrk/paranoid/cmd/paranoid@latest</code></span>
+      <span><code>paranoid verify --base main</code></span>
+    </div>
+    <div class="col">
+      <a href="docs/site/index.html">documentation</a>
+      <a href="docs/site/rules.html">all 42 rules</a>
+      <a href="docs/site/integrations.html">Action, pre-commit &amp; Claude Code</a>
+    </div>
+    <div class="col">
+      <a href="https://github.com/alainrk/paranoid">github &nearr;</a>
+      <a href="https://github.com/alainrk/paranoid/releases">releases &nearr;</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function copyInstall(btn) {
+    navigator.clipboard.writeText(document.getElementById("install-cmd").textContent).then(function () {
+      btn.textContent = "copied";
+      setTimeout(function () { btn.textContent = "copy"; }, 1500);
+    });
+  }
+</script>
+
+</body>
+</html>

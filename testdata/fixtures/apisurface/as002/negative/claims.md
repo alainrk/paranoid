@@ -1,0 +1,1 @@
+- Fixed `Formatter` to trim whitespace from the input.

@@ -1,0 +1,7 @@
+{
+  "name": "webapp",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ghost-http-client": "^2.1.0"
+  }
+}

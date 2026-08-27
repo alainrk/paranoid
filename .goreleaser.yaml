@@ -1,0 +1,42 @@
+version: 2
+
+project_name: paranoid
+
+builds:
+  - main: ./cmd/paranoid
+    binary: paranoid
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/alainrk/paranoid/internal/cli.version={{.Version}}
+      - -X github.com/alainrk/paranoid/internal/cli.commit={{.ShortCommit}}
+      - -X github.com/alainrk/paranoid/internal/cli.date={{.Date}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^ci:"

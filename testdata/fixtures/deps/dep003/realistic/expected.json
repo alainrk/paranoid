@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "DEP003", "severity": "medium", "category": "dependencies", "file": "Cargo.toml", "line": 7}
+  ]
+}

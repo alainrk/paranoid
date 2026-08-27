@@ -1,0 +1,7 @@
+[package]
+name = "mytool"
+version = "0.1.0"
+
+[dependencies]
+serde = "1"
+smallcrate = "0.2"
