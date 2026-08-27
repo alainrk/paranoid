@@ -79,8 +79,12 @@ jobs:
             base="origin/${BASE_REF}"
           elif [ -n "${PUSH_BASE}" ] && git cat-file -e "${PUSH_BASE}" 2>/dev/null; then
             base="${PUSH_BASE}"
-          else
+          elif git rev-parse --verify --quiet 'HEAD~1^{commit}' >/dev/null; then
             base="HEAD~1"
+          else
+            # First commit on the repository: there is nothing to diff against.
+            echo "No base commit to compare against; skipping." | tee paranoid-report.md >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           echo "Comparing against ${base}"
           ./bin/paranoid verify --base "${base}" --sandbox none \

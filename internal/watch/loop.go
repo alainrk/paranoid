@@ -106,7 +106,7 @@ func (l *Loop) Watch(ctx context.Context) error {
 	startRun := func() {
 		busy = true
 		var runCtx context.Context
-		runCtx, cancel = context.WithCancel(ctx)
+		runCtx, cancel = context.WithCancel(ctx) // #nosec G118 -- cancel is called by every select branch below, gosec cannot see through the outer variable
 		check := l.Check
 		start := l.now()
 		go func() {
@@ -143,6 +143,9 @@ func (l *Loop) Watch(ctx context.Context) error {
 				if busy {
 					<-outcomes
 				}
+				if cancel != nil {
+					cancel()
+				}
 				if ctx.Err() != nil {
 					return nil
 				}
@@ -162,6 +165,7 @@ func (l *Loop) Watch(ctx context.Context) error {
 
 		case out := <-outcomes:
 			busy = false
+			cancel()
 			cancel = nil
 			l.reportOutcome(out)
 			if rerun {

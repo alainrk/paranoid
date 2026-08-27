@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/png/paranoid-lockup-dark-bg.png">
+    <img src="assets/png/paranoid-lockup-light-bg.png" alt="paranoid" width="329">
+  </picture>
+</p>
+
 # paranoid
 
 paranoid is a local CLI that audits the diff an AI coding agent
@@ -13,12 +20,16 @@ working tree, a branch, or any two points in git history. See
 
 Run the demo yourself: `make build && sh hack/demo/demo.sh`
 
+Website: <https://alainrk.github.io/paranoid/>
+
 Full documentation, including every flag, the JSON report schema, and
-the full rule reference, lives under
-[docs/site](https://github.com/alainrk/paranoid/tree/main/docs/site):
-a set of self-contained HTML pages, open `docs/site/index.html`
-directly or view them on GitHub. This README covers the same ground in
-one page; the docs site is the one to link to and the one to search.
+the full rule reference, lives at
+<https://alainrk.github.io/paranoid/docs/site/index.html>. The same
+pages are self-contained HTML under
+[docs/site](https://github.com/alainrk/paranoid/tree/main/docs/site),
+so you can also open `docs/site/index.html` straight from a checkout.
+This README covers the same ground in one page; the docs site is the
+one to link to and the one to search.
 
 ## The problem
 

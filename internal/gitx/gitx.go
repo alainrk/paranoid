@@ -320,6 +320,9 @@ func (r *Repo) exportWorktree(ctx context.Context, destDir string) error {
 			continue
 		}
 		dst := filepath.Join(destDir, filepath.FromSlash(file))
+		if !strings.HasPrefix(dst, filepath.Clean(destDir)+string(os.PathSeparator)) {
+			return fmt.Errorf("tracked path %q escapes the export directory", file)
+		}
 		if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 			return fmt.Errorf("exporting %s: %w", file, err)
 		}
@@ -327,7 +330,7 @@ func (r *Repo) exportWorktree(ctx context.Context, destDir string) error {
 		if err != nil {
 			return fmt.Errorf("exporting %s: %w", file, err)
 		}
-		if err := os.WriteFile(dst, content, info.Mode().Perm()); err != nil {
+		if err := os.WriteFile(dst, content, info.Mode().Perm()); err != nil { // #nosec G703 -- traversal checked above; paths come from git ls-files
 			return fmt.Errorf("exporting %s: %w", file, err)
 		}
 	}

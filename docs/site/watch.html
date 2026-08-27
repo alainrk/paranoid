@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>paranoid docs, watch</title>
 <meta name="description" content="Watch a repository and run static checks (test integrity plus DEP005) on every change, live.">
+<link rel="icon" href="../../assets/svg/paranoid-favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../../assets/png/paranoid-avatar-512.png" type="image/png" sizes="512x512">
+<link rel="apple-touch-icon" href="../../assets/png/paranoid-avatar-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -28,6 +31,7 @@
   header { border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
   .bar { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 24px; max-width: 1160px; margin: 0 auto; font-family: var(--mono); font-size: 14px; }
   .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+  .mark img { height: 1.45em; width: auto; vertical-align: -0.42em; margin-right: 0.5em; }
   .mark .dot { color: var(--accent); }
   .bar nav { display: flex; gap: 22px; }
   .bar nav a { text-decoration: none; color: var(--ink-soft); }
@@ -70,7 +74,7 @@
 
 <header>
   <div class="bar">
-    <a class="mark" href="../../index.html">paranoid<span class="dot">_</span></a>
+    <a class="mark" href="../../index.html"><img src="../../assets/svg/paranoid-mark-light-bg.svg" alt="">paranoid<span class="dot">_</span></a>
     <nav>
       <a href="index.html">docs</a>
       <a href="https://github.com/alainrk/paranoid" class="hide-sm">github &nearr;</a>

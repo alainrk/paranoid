@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 60">
+<defs><mask id="cut"><rect width="250" height="60" fill="#fff"></rect><path d="M17 19 L28 28 L17 37" fill="none" stroke="#000" stroke-width="4" stroke-linecap="square"></path><rect x="31" y="33" width="9" height="4" fill="#000"></rect></mask></defs>
+<path d="M26 3 L48 11 V30 C48 44 26 55 26 55 C26 55 4 44 4 30 V11 Z" fill="#1a1b1e" mask="url(#cut)"></path>
+<rect x="31" y="33" width="9" height="4" fill="#b23a1d"></rect>
+<text x="64" y="41" font-family="IBM Plex Mono, ui-monospace, Menlo, monospace" font-size="30" font-weight="600" fill="#1a1b1e">paranoid</text>
+</svg>

@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>paranoid, verify your AI coding agents</title>
 <meta name="description" content="paranoid is a local CLI that audits agent-written diffs: test integrity, dependencies, error handling, safety controls, clean-room test runs, and claim verification.">
+<link rel="icon" href="assets/svg/paranoid-favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/png/paranoid-avatar-512.png" type="image/png" sizes="512x512">
+<link rel="apple-touch-icon" href="assets/png/paranoid-avatar-512.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="paranoid, verify your AI coding agents">
+<meta property="og:description" content="paranoid is a local CLI that audits agent-written diffs: test integrity, dependencies, error handling, safety controls, clean-room test runs, and claim verification.">
+<meta property="og:url" content="https://alainrk.github.io/paranoid/">
+<meta property="og:image" content="https://alainrk.github.io/paranoid/assets/png/paranoid-social-1280x640.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://alainrk.github.io/paranoid/assets/png/paranoid-social-1280x640.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -50,6 +60,7 @@
     font-family: var(--mono); font-size: 14px;
   }
   .mark { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; }
+  .mark img { height: 1.45em; width: auto; vertical-align: -0.42em; margin-right: 0.5em; }
   .mark .dot { color: var(--accent); }
   nav { display: flex; gap: 26px; }
   nav a { text-decoration: none; color: var(--ink-soft); }
@@ -272,7 +283,7 @@
 
 <header>
   <div class="wrap bar">
-    <a class="mark" href="#">paranoid<span class="dot">_</span></a>
+    <a class="mark" href="#"><img src="assets/svg/paranoid-mark-light-bg.svg" alt="">paranoid<span class="dot">_</span></a>
     <nav>
       <a href="#checks" class="hide-sm">checks</a>
       <a href="#loop" class="hide-sm">adoption</a>
@@ -490,7 +501,7 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
 <footer>
   <div class="wrap foot">
     <div class="col">
-      <span class="mark">paranoid<span style="color: var(--accent);">_</span></span>
+      <span class="mark"><img src="assets/svg/paranoid-mark-light-bg.svg" alt="">paranoid<span style="color: var(--accent);">_</span></span>
       <span>Local, deterministic verification for agent-written diffs.</span>
     </div>
     <div class="col">
