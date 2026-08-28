@@ -72,7 +72,7 @@ func TestRenderText(t *testing.T) {
 	out := RenderText(sampleResult(), false)
 	require.Contains(t, out, "paranoid dev")
 	require.Contains(t, out, "base: 0123456789ab\n")
-	require.Contains(t, out, "head: worktree\n")
+	require.Contains(t, out, "head: worktree (uncommitted changes included)\n")
 	require.Contains(t, out, "score: 65/100  verdict: warn")
 	require.Contains(t, out, "test-integrity (2 findings)")
 	require.Contains(t, out, "TI001  critical  calc_test.go")

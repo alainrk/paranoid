@@ -3,6 +3,7 @@ package sandbox
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/alainrk/paranoid/internal/finding"
 	"github.com/alainrk/paranoid/internal/rules"
@@ -31,7 +32,7 @@ func Evaluate(result Result, diffAddedSkips int, baseRun *Result) []finding.Find
 
 	if result.ExitCode != 0 {
 		out = append(out, newFinding("SBX001", "", 0,
-			truncate(fmt.Sprintf("%s exited %d: %s", result.Command, result.ExitCode, result.Output)),
+			truncate(failureEvidence(result)),
 			"The test suite fails in a clean room, whatever the agent claimed.",
 			"Run the suite in a fresh checkout and fix the failures."))
 	}
@@ -113,6 +114,34 @@ func executedCount(r Result) int {
 		}
 	}
 	return total
+}
+
+// maxFailureNames caps how many failing tests SBX001 names before
+// switching to "and N more", so evidence stays one readable line.
+const maxFailureNames = 5
+
+// failureEvidence builds the SBX001 evidence line. When the parser
+// recognized which tests failed, evidence names them; that is what a
+// reader needs to act. Only when no per-test detail exists does it
+// fall back to the command and the output tail.
+func failureEvidence(result Result) string {
+	if len(result.Failures) == 0 {
+		return fmt.Sprintf("%s exited %d: %s", result.Command, result.ExitCode, result.Output)
+	}
+	names := result.Failures
+	extra := 0
+	if len(names) > maxFailureNames {
+		extra = len(names) - maxFailureNames
+		names = names[:maxFailureNames]
+	}
+	evidence := "failing tests: " + strings.Join(names, ", ")
+	if extra > 0 {
+		evidence += fmt.Sprintf(" and %d more", extra)
+	}
+	if result.Passed >= 0 && result.Failed >= 0 {
+		evidence += fmt.Sprintf(" (%d failed, %d passed)", result.Failed, result.Passed)
+	}
+	return evidence
 }
 
 // maxEvidence matches the analyzers' evidence cap.

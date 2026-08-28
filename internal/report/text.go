@@ -72,7 +72,7 @@ func RenderText(res finding.Result, color bool) string {
 	fmt.Fprintf(&b, "paranoid %s\n", res.Meta.Version)
 	fmt.Fprintf(&b, "repo: %s\n", res.Meta.Repo)
 	fmt.Fprintf(&b, "base: %s\n", shortRef(res.Meta.Base))
-	fmt.Fprintf(&b, "head: %s\n", shortRef(res.Meta.Head))
+	fmt.Fprintf(&b, "head: %s\n", headLabel(res.Meta.Head))
 	fmt.Fprintf(&b, "\nscore: %d/100  verdict: %s\n", res.Score, st.verdict(res.Verdict))
 
 	if len(res.Findings) == 0 {
@@ -149,6 +149,17 @@ func coverageLine(cov finding.Coverage) string {
 		sign = ""
 	}
 	return fmt.Sprintf("%.2f%% (base %.2f%%, %s%.2f points)", cov.HeadPercent, cov.BasePercent, sign, cov.DeltaPercent)
+}
+
+// headLabel renders the head reference for text and markdown reports.
+// The bare "worktree" label from the JSON schema is spelled out, so a
+// reader sees at a glance that the score covers whatever is sitting
+// uncommitted on disk, not just the last commit.
+func headLabel(ref string) string {
+	if ref == "worktree" {
+		return "worktree (uncommitted changes included)"
+	}
+	return shortRef(ref)
 }
 
 // shortRef shortens full commit hashes for display and leaves labels

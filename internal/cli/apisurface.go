@@ -10,11 +10,13 @@ import (
 	"github.com/alainrk/paranoid/internal/gitx"
 )
 
-// checkAPISurface names the api-surface check in reports. Its skipped
-// reason, when claims are unavailable, is exactly "no claims
-// provided", so the two together render as "api-surface: no claims
-// provided".
+// checkAPISurface names the api-surface check in reports.
 const checkAPISurface = "api-surface"
+
+// noClaimsReason is the api-surface skip reason when no claims source
+// was given. It tells the reader how to turn the check on, not just
+// that it was off.
+const noClaimsReason = "no claims provided (pass --claims or --session to enable this check)"
 
 // apiSurfaceOutcome carries the stage result back into the pipeline.
 type apiSurfaceOutcome struct {
@@ -31,7 +33,7 @@ type apiSurfaceOutcome struct {
 // claims.
 func runAPISurfaceStage(ctx context.Context, repo *gitx.Repo, baseRef, headRef string, changes []gitx.Change, clm claimsOutcome) (apiSurfaceOutcome, error) {
 	if !clm.ran {
-		return apiSurfaceOutcome{skipped: &finding.SkippedCheck{Name: checkAPISurface, Reason: "no claims provided"}}, nil
+		return apiSurfaceOutcome{skipped: &finding.SkippedCheck{Name: checkAPISurface, Reason: noClaimsReason}}, nil
 	}
 
 	fileChanges, err := collectAPISurfaceChanges(ctx, repo, baseRef, headRef, changes)

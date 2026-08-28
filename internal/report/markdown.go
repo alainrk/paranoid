@@ -17,7 +17,7 @@ func RenderMarkdown(res finding.Result) string {
 	fmt.Fprintf(&b, "**Score: %d/100, verdict: %s.**\n\n", res.Score, res.Verdict)
 	fmt.Fprintf(&b, "- repo: `%s`\n", res.Meta.Repo)
 	fmt.Fprintf(&b, "- base: `%s`\n", shortRef(res.Meta.Base))
-	fmt.Fprintf(&b, "- head: `%s`\n", shortRef(res.Meta.Head))
+	fmt.Fprintf(&b, "- head: `%s`\n", headLabel(res.Meta.Head))
 	fmt.Fprintf(&b, "- version: %s\n", res.Meta.Version)
 	fmt.Fprintf(&b, "- generated: %s\n", res.Meta.GeneratedAt.Format(time.RFC3339))
 

@@ -15,7 +15,7 @@ func TestRenderMarkdown(t *testing.T) {
 	require.Contains(t, out, "**Score: 65/100, verdict: warn.**")
 	require.Contains(t, out, "- repo: `/tmp/repo`")
 	require.Contains(t, out, "- base: `0123456789ab`")
-	require.Contains(t, out, "- head: `worktree`")
+	require.Contains(t, out, "- head: `worktree (uncommitted changes included)`")
 	require.Contains(t, out, "- generated: 2026-01-02T03:04:05Z")
 	require.Contains(t, out, "## test-integrity (2 findings)")
 	require.Contains(t, out, "### TI001, critical, `calc_test.go`")

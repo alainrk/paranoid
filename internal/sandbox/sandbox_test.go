@@ -40,10 +40,20 @@ func TestDetectModeNone(t *testing.T) {
 	require.Contains(t, reason, "--sandbox none")
 }
 
+// stubLookPath makes every runtime binary look installed for one test,
+// so detection is exercised through the fake exec instead of depending
+// on what the host machine has on PATH.
+func stubLookPath(t *testing.T) {
+	t.Helper()
+	orig := lookPath
+	lookPath = func(string) (string, error) { return "", nil }
+	t.Cleanup(func() { lookPath = orig })
+}
+
 func TestDetectAutoFallsBackAcrossRuntimes(t *testing.T) {
-	// docker exists on PATH in dev and CI environments; make its probe
-	// fail so auto reports no runtime (podman is absent everywhere we
-	// run tests).
+	// Both runtimes look installed but their probes fail, so auto
+	// reports no working runtime.
+	stubLookPath(t)
 	fake := &fakeExec{responses: map[string]fakeResponse{"info": {output: "no daemon", code: 1}}}
 	runner, reason := detectWith(context.Background(), ModeAuto, fake.run)
 	require.Nil(t, runner)
@@ -51,6 +61,7 @@ func TestDetectAutoFallsBackAcrossRuntimes(t *testing.T) {
 }
 
 func TestDetectExplicitDockerProbeFailure(t *testing.T) {
+	stubLookPath(t)
 	fake := &fakeExec{responses: map[string]fakeResponse{"info": {output: "cannot connect", code: 1}}}
 	runner, reason := detectWith(context.Background(), ModeDocker, fake.run)
 	require.Nil(t, runner)
@@ -58,11 +69,21 @@ func TestDetectExplicitDockerProbeFailure(t *testing.T) {
 }
 
 func TestDetectExplicitDockerWorks(t *testing.T) {
+	stubLookPath(t)
 	fake := &fakeExec{responses: map[string]fakeResponse{"info": {output: "27.0.1", code: 0}}}
 	runner, reason := detectWith(context.Background(), ModeDocker, fake.run)
 	require.NotNil(t, runner)
 	require.Empty(t, reason)
 	require.Equal(t, "docker", runner.bin)
+}
+
+func TestDetectMissingBinaryReportsNotInstalled(t *testing.T) {
+	orig := lookPath
+	lookPath = func(string) (string, error) { return "", os.ErrNotExist }
+	t.Cleanup(func() { lookPath = orig })
+	runner, reason := detectWith(context.Background(), ModeDocker, (&fakeExec{}).run)
+	require.Nil(t, runner)
+	require.Contains(t, reason, "docker is not installed")
 }
 
 func TestRunHappyPath(t *testing.T) {
@@ -145,6 +166,42 @@ func TestParsePytestCounts(t *testing.T) {
 	result = Result{Passed: -1, Failed: -1, Skipped: -1}
 	parseCounts("pytest", "garbage with no summary", &result)
 	require.Equal(t, -1, result.Passed)
+}
+
+func TestParseGoTestJSONCollectsFailuresAndOutput(t *testing.T) {
+	output := `{"Action":"output","Package":"example.com/x/calc","Test":"TestAdd","Output":"--- FAIL: TestAdd\n"}` + "\n" +
+		`{"Action":"output","Package":"example.com/x/calc","Test":"TestAdd","Output":"    calc_test.go:12: got 3, want 4\n"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x/calc","Test":"TestAdd"}` + "\n" +
+		`{"Action":"pass","Package":"example.com/x/calc","Test":"TestSub"}` + "\n" +
+		"total:\t(statements)\t80.0%\n"
+	result := Result{Passed: -1, Failed: -1, Skipped: -1}
+	parseCounts("go", output, &result)
+	require.Equal(t, 1, result.Passed)
+	require.Equal(t, 1, result.Failed)
+	require.Equal(t, []string{"calc.TestAdd"}, result.Failures)
+	// The report shows the decoded test output, never raw JSON events.
+	require.Contains(t, result.Output, "calc_test.go:12: got 3, want 4")
+	require.Contains(t, result.Output, "total:")
+	require.NotContains(t, result.Output, `"Action"`)
+}
+
+func TestParseGoTestJSONBuildFailureKeepsCompilerOutput(t *testing.T) {
+	output := `{"Action":"output","Package":"example.com/x/calc","Output":"calc.go:3:1: syntax error\n"}` + "\n" +
+		`{"Action":"fail","Package":"example.com/x/calc"}` + "\n"
+	result := Result{Passed: -1, Failed: -1, Skipped: -1}
+	parseCounts("go", output, &result)
+	require.Empty(t, result.Failures, "a build failure has no per-test names")
+	require.Contains(t, result.Output, "syntax error")
+}
+
+func TestParsePytestFailureNames(t *testing.T) {
+	output := "FAILED test_calc.py::test_add - assert 3 == 4\n" +
+		"ERROR test_io.py::test_read\n" +
+		"FAILED test_calc.py::test_add - assert 3 == 4\n" +
+		"2 failed, 1 error, 3 passed in 0.10s\n"
+	result := Result{Passed: -1, Failed: -1, Skipped: -1}
+	parseCounts("pytest", output, &result)
+	require.Equal(t, []string{"test_calc.py::test_add", "test_io.py::test_read"}, result.Failures)
 }
 
 func TestDetectSuiteGo(t *testing.T) {
@@ -239,6 +296,27 @@ func TestEvaluateFailure(t *testing.T) {
 	require.Len(t, got, 1)
 	require.Equal(t, "SBX001", got[0].RuleID)
 	require.Contains(t, got[0].Evidence, "pytest -q exited 1")
+}
+
+func TestEvaluateFailureNamesFailingTests(t *testing.T) {
+	got := Evaluate(Result{
+		Ran: true, ExitCode: 1, Passed: 10, Failed: 2, Skipped: 0,
+		Command:  "go test ./...",
+		Failures: []string{"calc.TestAdd", "calc.TestDiv"},
+	}, 0, nil)
+	require.Len(t, got, 1)
+	require.Equal(t, "SBX001", got[0].RuleID)
+	require.Equal(t, "failing tests: calc.TestAdd, calc.TestDiv (2 failed, 10 passed)", got[0].Evidence)
+	require.NotContains(t, got[0].Evidence, "go test", "the command is noise once the failing tests are named")
+}
+
+func TestEvaluateFailureCapsTheNameList(t *testing.T) {
+	failures := []string{"p.T1", "p.T2", "p.T3", "p.T4", "p.T5", "p.T6", "p.T7"}
+	got := Evaluate(Result{Ran: true, ExitCode: 1, Passed: 0, Failed: 7, Skipped: 0, Failures: failures}, 0, nil)
+	require.Len(t, got, 1)
+	require.Contains(t, got[0].Evidence, "p.T5")
+	require.NotContains(t, got[0].Evidence, "p.T6")
+	require.Contains(t, got[0].Evidence, "and 2 more")
 }
 
 func TestEvaluateSkippedWithDiffSkips(t *testing.T) {

@@ -51,7 +51,7 @@ func TestFixPromptGoldenMixedCategories(t *testing.T) {
 		"\n" +
 		"Notes:\n" +
 		"- could not verify sandbox/clean-room: disabled with --sandbox none\n" +
-		"- could not verify api-surface: no claims provided\n" +
+		"- could not verify api-surface: no claims provided (pass --claims or --session to enable this check)\n" +
 		"\n" +
 		"When every instruction above is done, prove it: rerun this project's full build, lint, and test suite (the equivalent of `make check`) and show that it passes.\n"
 	require.Equal(t, wantText, fixprompt.RenderText(prompt))
@@ -85,7 +85,7 @@ func TestFixPromptGoldenMixedCategories(t *testing.T) {
   ],
   "notes": [
     "could not verify sandbox/clean-room: disabled with --sandbox none",
-    "could not verify api-surface: no claims provided"
+    "could not verify api-surface: no claims provided (pass --claims or --session to enable this check)"
   ]
 }
 `

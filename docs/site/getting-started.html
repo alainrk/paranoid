@@ -167,7 +167,7 @@
 paranoid v0.1.0
 repo: /home/you/project
 base: 7db5cfbeaacf
-head: worktree
+head: worktree (uncommitted changes included)
 
 score: 40/100  verdict: fail
 
@@ -185,7 +185,8 @@ test-integrity (2 findings)
       A skip was added to an existing test.
 </code></pre>
     <p>
-      <code>head: worktree</code> means your working tree as it is on
+      <code>head: worktree (uncommitted changes included)</code>
+      means your working tree as it is on
       disk. The exit code follows the verdict (see
       <a href="exit-codes-ci.html">Exit codes &amp; CI</a>), so the
       same command gates CI.

@@ -65,6 +65,12 @@ type Result struct {
 	Output     string
 	Command    string
 
+	// Failures names the tests that failed, in output order, when the
+	// suite's output makes them recognizable (go test -json events,
+	// pytest FAILED/ERROR summary lines). Empty when the runner gives
+	// no per-test detail; SBX001 then falls back to the raw output.
+	Failures []string
+
 	// Coverage is best-effort and never affects Ran, ExitCode, or the
 	// pass/fail counts above. CoverageAvailable is false when no number
 	// could be produced (no tooling for the suite, coverage tooling
@@ -152,9 +158,16 @@ func newRunner(bin string, run execFunc) *Runner {
 	return &Runner{bin: bin, run: run, name: fmt.Sprintf("paranoid-%d-%d", os.Getpid(), time.Now().UnixNano())}
 }
 
+// lookPath finds a runtime binary on PATH. A variable so tests can
+// pretend a runtime is installed no matter what the host has;
+// otherwise the detect tests only pass on machines with docker
+// installed, which is exactly the environment dependence SBX001
+// exists to catch.
+var lookPath = exec.LookPath
+
 // probe checks that a runtime binary exists and its daemon answers.
 func probe(ctx context.Context, bin string, run execFunc) string {
-	if _, err := exec.LookPath(bin); err != nil {
+	if _, err := lookPath(bin); err != nil {
 		return fmt.Sprintf("%s is not installed", bin)
 	}
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)

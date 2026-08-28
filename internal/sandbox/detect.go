@@ -180,6 +180,10 @@ var (
 	pytestErrorRe   = regexp.MustCompile(`(\d+) error`)
 )
 
+// pytestFailureRe matches pytest's short-summary lines naming each
+// failing or erroring test, like "FAILED test_calc.py::test_add".
+var pytestFailureRe = regexp.MustCompile(`(?m)^(?:FAILED|ERROR)\s+(\S+)`)
+
 // parseCounts fills pass, fail, and skip counts from suite output.
 func parseCounts(kind, output string, result *Result) {
 	switch kind {
@@ -195,8 +199,23 @@ func parseCounts(kind, output string, result *Result) {
 			result.Failed += errs
 		}
 		result.Skipped = lastCount(pytestSkippedRe, output)
+		result.Failures = pytestFailures(output)
 		normalizeMissing(result)
 	}
+}
+
+// pytestFailures lists the failing tests named in pytest's short
+// summary, deduplicated in output order.
+func pytestFailures(output string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, m := range pytestFailureRe.FindAllStringSubmatch(output, -1) {
+		if name := m[1]; !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 // lastCount returns the last captured number or -1.
@@ -229,20 +248,40 @@ func normalizeMissing(result *Result) {
 	}
 }
 
-// parseGoTestJSON counts test events in go test -json output.
+// parseGoTestJSON counts test events in go test -json output. It also
+// collects the names of failing tests and rebuilds the human-readable
+// test output from the JSON event stream, so reports and evidence show
+// compiler and test messages instead of raw JSON lines.
 func parseGoTestJSON(output string, result *Result) {
 	passed, failed, skipped := 0, 0, 0
 	seen := false
+	var failures []string
+	var text strings.Builder
 	for _, line := range strings.Split(output, "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" || !strings.HasPrefix(line, "{") {
+		if line == "" {
+			continue
+		}
+		if !strings.HasPrefix(line, "{") {
+			// Non-JSON lines (the coverage total, stray tool noise)
+			// belong in the readable output too.
+			text.WriteString(line + "\n")
 			continue
 		}
 		var event struct {
-			Action string `json:"Action"`
-			Test   string `json:"Test"`
+			Action  string `json:"Action"`
+			Package string `json:"Package"`
+			Test    string `json:"Test"`
+			Output  string `json:"Output"`
 		}
-		if json.Unmarshal([]byte(line), &event) != nil || event.Test == "" {
+		if json.Unmarshal([]byte(line), &event) != nil {
+			continue
+		}
+		if event.Action == "output" {
+			text.WriteString(event.Output)
+			continue
+		}
+		if event.Test == "" {
 			continue
 		}
 		switch event.Action {
@@ -252,6 +291,7 @@ func parseGoTestJSON(output string, result *Result) {
 		case "fail":
 			failed++
 			seen = true
+			failures = append(failures, goTestName(event.Package, event.Test))
 		case "skip":
 			skipped++
 			seen = true
@@ -260,4 +300,21 @@ func parseGoTestJSON(output string, result *Result) {
 	if seen {
 		result.Passed, result.Failed, result.Skipped = passed, failed, skipped
 	}
+	result.Failures = failures
+	if decoded := strings.TrimSpace(text.String()); decoded != "" {
+		result.Output = lastLines(decoded, 30)
+	}
+}
+
+// goTestName joins the last element of the package path with the test
+// name, so a failure reads like "sandbox.TestRun" without the full
+// module path taking up the whole evidence line.
+func goTestName(pkg, test string) string {
+	if pkg == "" {
+		return test
+	}
+	if idx := strings.LastIndex(pkg, "/"); idx >= 0 {
+		pkg = pkg[idx+1:]
+	}
+	return pkg + "." + test
 }
