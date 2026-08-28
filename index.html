@@ -102,9 +102,11 @@
     background: var(--paper-deep);
     padding: 13px 18px;
     font-family: var(--mono); font-size: 14px;
+    min-width: 0; max-width: 100%;
   }
-  .install code { white-space: nowrap; overflow-x: auto; }
+  .install code { white-space: nowrap; overflow-x: auto; display: block; min-width: 0; }
   .install button {
+    flex-shrink: 0;
     font-family: var(--mono); font-size: 12px;
     border: 1px solid var(--ink); background: var(--paper);
     padding: 4px 10px; cursor: pointer; color: var(--ink);
@@ -227,6 +229,8 @@
   /* verdict / CI */
   .ci-grid { margin: 46px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
   @media (max-width: 860px) { .ci-grid { grid-template-columns: 1fr; } }
+  .ci-grid > * { min-width: 0; }
+  .table-scroll { overflow-x: auto; }
   table.codes {
     width: 100%; border-collapse: collapse;
     font-family: var(--mono); font-size: 14px;
@@ -273,10 +277,6 @@
   .foot .col { display: flex; flex-direction: column; gap: 9px; }
   .foot a { text-decoration: none; }
   .foot .mark { color: var(--ink); font-size: 15px; }
-  .foot code {
-    background: var(--paper-deep); border: 1px solid var(--rule);
-    padding: 2px 7px; font-size: 12.5px;
-  }
 </style>
 </head>
 <body>
@@ -348,7 +348,7 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
   </div>
 
   <div class="stats">
-    <div class="stat"><b>42</b><span>documented rules</span></div>
+    <div class="stat"><b>0</b><span>network by default</span></div>
     <div class="stat"><b>100%</b><span>deterministic by default</span></div>
     <div class="stat"><b>1</b><span>static binary</span></div>
     <div class="stat"><b>0&ndash;100</b><span>trust score</span></div>
@@ -386,42 +386,42 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
     <p class="sec-intro">
       <code style="font-family: var(--mono); font-size: 15px;">paranoid verify</code>
       compares the repository before and after the agent worked. Every finding
-      maps to a documented rule with a fixed ID and severity. All 42 rules
-      are listed with examples in the <a href="docs/site/rules.html">rule reference</a>.
+      maps to a documented rule with a fixed ID and severity, listed with
+      examples in the <a href="docs/site/rules.html">rule reference</a>.
     </p>
     <div class="checks">
       <div class="check">
-        <span class="rid">TI &middot; 14 rules</span>
+        <span class="rid">TI</span>
         <h3>Test integrity</h3>
         <p>Parses the test diff (Go with the real Go parser) and flags deleted tests, weakened assertions, new skip markers, tautologies, hidden renames, new mocking, new retries, new sleeps, stretched timeouts, and edits to CI and test configuration.</p>
       </div>
       <div class="check">
-        <span class="rid">DEP &middot; 5 rules</span>
+        <span class="rid">DEP</span>
         <h3>Dependencies</h3>
         <p>Cross-checks new imports against manifests, then looks up new packages on npm, PyPI, crates.io, and the Go proxy: nonexistent, brand new, nearly unused, or typosquatting a popular name.</p>
       </div>
       <div class="check">
-        <span class="rid">EH &middot; 5 rules</span>
+        <span class="rid">EH</span>
         <h3>Error handling</h3>
         <p>Looks at every changed source file for errors made to disappear: a checked error newly discarded, an empty catch block, an except block that only passes, a no-op promise handler, and a return or raise turned into a log line.</p>
       </div>
       <div class="check">
-        <span class="rid">SBX &middot; 5 rules</span>
+        <span class="rid">SBX</span>
         <h3>Clean-room test run</h3>
         <p>Reruns the test suite in a container with the network disabled, and collects coverage where the tooling allows. Catches results that only held on the agent's machine, and coverage that quietly dropped.</p>
       </div>
       <div class="check">
-        <span class="rid">CLM &middot; 5 rules</span>
+        <span class="rid">CLM</span>
         <h3>Claims</h3>
         <p>Extracts concrete claims from the agent&rsquo;s summary, a session file from Claude Code, Codex, Gemini CLI, Aider, or Cursor, or the commit messages, and checks each one against the diff, the clean-room result, and the diff's overall radius.</p>
       </div>
       <div class="check">
-        <span class="rid">AS &middot; 2 rules</span>
+        <span class="rid">AS</span>
         <h3>API surface</h3>
         <p>Diffs public symbols between base and head and flags a symbol removed while the claims say a fix or feature landed: green by deletion, one layer deeper than deleting the test.</p>
       </div>
       <div class="check">
-        <span class="rid">SF &middot; 6 rules</span>
+        <span class="rid">SF</span>
         <h3>Safety controls</h3>
         <p>Scans every changed file for known patterns: TLS verification disabled, an auth check removed, a tracked path hidden by .gitignore, a git hook changed, CI permissions widened, or paranoid's own baseline and hook config edited. Pattern-based, not a security scanner.</p>
       </div>
@@ -456,13 +456,15 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
     <span class="sec-label">CI usage</span>
     <h2>Exit codes you can gate a merge on</h2>
     <div class="ci-grid">
-      <table class="codes">
-        <tr><th>exit</th><th>verdict</th><th>meaning</th></tr>
-        <tr><td>0</td><td class="v-pass">pass</td><td>score 80 or higher</td></tr>
-        <tr><td>1</td><td class="v-warn">warn</td><td>score 50 to 79 (exit 2 with <span style="white-space: nowrap;">--strict</span>)</td></tr>
-        <tr><td>2</td><td class="v-fail">fail</td><td>score below 50, or below <span style="white-space: nowrap;">--fail-under</span></td></tr>
-        <tr><td>3</td><td>error</td><td>the tool itself failed, never a finding</td></tr>
-      </table>
+      <div class="table-scroll">
+        <table class="codes">
+          <tr><th>exit</th><th>verdict</th><th>meaning</th></tr>
+          <tr><td>0</td><td class="v-pass">pass</td><td>score 80 or higher</td></tr>
+          <tr><td>1</td><td class="v-warn">warn</td><td>score 50 to 79 (exit 2 with <span style="white-space: nowrap;">--strict</span>)</td></tr>
+          <tr><td>2</td><td class="v-fail">fail</td><td>score below 50, or below <span style="white-space: nowrap;">--fail-under</span></td></tr>
+          <tr><td>3</td><td>error</td><td>the tool itself failed, never a finding</td></tr>
+        </table>
+      </div>
       <div class="yamlbox">
         <div class="yb-head">.github/workflows/verify.yml</div>
         <pre><span class="yk">- uses:</span> alainrk/paranoid/action@main
@@ -505,13 +507,8 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
       <span>Local, deterministic verification for agent-written diffs.</span>
     </div>
     <div class="col">
-      <span><code>go install github.com/alainrk/paranoid/cmd/paranoid@latest</code></span>
-      <span><code>paranoid verify --base main</code></span>
-    </div>
-    <div class="col">
       <a href="docs/site/index.html">documentation</a>
-      <a href="docs/site/rules.html">all 42 rules</a>
-      <a href="docs/site/integrations.html">Action, pre-commit &amp; Claude Code</a>
+      <a href="docs/site/rules.html">rule reference</a>
     </div>
     <div class="col">
       <a href="https://github.com/alainrk/paranoid">github &nearr;</a>
