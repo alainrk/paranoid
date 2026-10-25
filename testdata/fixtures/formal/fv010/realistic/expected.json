@@ -1,0 +1,8 @@
+{
+  "findings": [
+    {"rule_id": "FV001", "severity": "high", "category": "formal-verification", "file": "Bad.v", "line": 7},
+    {"rule_id": "FV002", "severity": "high", "category": "formal-verification", "file": "Bad.v", "line": 3},
+    {"rule_id": "FV010", "severity": "high", "category": "formal-verification", "file": "Bad.v", "line": 4},
+    {"rule_id": "FV010", "severity": "high", "category": "formal-verification", "file": "Bad.v", "line": 6}
+  ]
+}

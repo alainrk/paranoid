@@ -126,19 +126,19 @@
     <p class="lede">
       <code>.paranoid.toml</code> at the repo root is the only other
       file paranoid reads besides command-line flags. It is optional,
-      and it has exactly four keys.
+      and it has a small, fixed set of keys.
     </p>
 
     <div class="card">
       <p>
-        There is no fifth key. An unknown key, an unknown table, or a
-        key with the wrong type is an execution error (exit 3) that
-        names the offending key. This is deliberate: the bar for
-        adding a fifth key is a design decision, not a pull request.
+        There is no general config system. An unknown key, an unknown
+        table, or a key with the wrong type is an execution error
+        (exit 3) that names the offending key. This is deliberate: the
+        bar for adding a key is a design decision, not a pull request.
       </p>
     </div>
 
-    <h2>The four keys</h2>
+    <h2>The keys</h2>
     <pre><code>fail-under = 80
 strict = true
 
@@ -150,7 +150,10 @@ expires = "2026-12-01"
 [sandbox]
 image-go = "golang:1.26"
 image-python = "python:3.12-slim"
-image-node = "node:22-slim"</code></pre>
+image-node = "node:22-slim"
+
+[formal]
+allowed_axioms = ["Classical.choice"]</code></pre>
     <table class="mono">
       <tr><th>Key</th><th>Type</th><th>Meaning</th></tr>
       <tr><td>fail-under</td><td>integer</td><td>This repo's own --fail-under default</td></tr>
@@ -161,11 +164,12 @@ image-node = "node:22-slim"</code></pre>
       <tr><td>[sandbox].image-go</td><td>string</td><td>Container image pin for a detected Go suite</td></tr>
       <tr><td>[sandbox].image-python</td><td>string</td><td>Container image pin for a detected Python suite (pytest or unittest)</td></tr>
       <tr><td>[sandbox].image-node</td><td>string</td><td>Container image pin for a detected npm/pnpm/yarn suite</td></tr>
+      <tr><td>[formal].allowed_axioms</td><td>list of strings, on one line</td><td>Axioms FV010 accepts in addition to the defaults (Lean: <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code>; Rocq: none). Each entry must be a non-empty string. <code>sorryAx</code>, <code>Lean.ofReduceBool</code>, and <code>Lean.trustCompiler</code> are rejected with an error, because allowing them would hide a hole. Only read with <code>verify --formal-check</code></td></tr>
     </table>
     <p>
       <code>[[disable]]</code> is an array of tables: repeat the block
-      to disable more than one rule. <code>[sandbox]</code> may appear
-      at most once. Both are optional; a file with only
+      to disable more than one rule. <code>[sandbox]</code> and
+      <code>[formal]</code> may each appear at most once. Both are optional; a file with only
       <code>fail-under</code> and <code>strict</code> is valid, and so
       is an empty file.
     </p>

@@ -243,9 +243,78 @@
       <a href="exit-codes-ci.html">Exit codes &amp; CI</a>.
     </p>
 
+    <h2 id="recheck">Clean-room re-check (opt-in)</h2>
+    <pre><code>paranoid verify --formal-check</code></pre>
+    <p>
+      The rules above read text. <code>--formal-check</code> asks the
+      proof checker instead. It rebuilds the proof project in a
+      container, then asks the kernel which axioms each audited theorem
+      really depends on. A <code>sorry</code> hidden behind a macro or a
+      notation still shows up as <code>sorryAx</code>. Without the flag
+      nothing changes in any report.
+    </p>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--formal-check</td><td>off</td><td>Run the re-check</td></tr>
+      <tr><td>--formal-image</td><td>per project</td><td>Override the container image</td></tr>
+      <tr><td>--formal-timeout</td><td>30m</td><td>Kill the re-check after this long. Real proof projects are slow</td></tr>
+    </table>
+    <p>
+      It uses the runtime chosen by <code>--sandbox</code> (docker or
+      podman). With <code>--sandbox none</code> the re-check is listed
+      as skipped, with no finding. See <a href="sandbox.html#proof-projects">Sandbox &amp; coverage</a>
+      for how the containers run.
+    </p>
+
+    <h3>Which project is rebuilt</h3>
+    <p>Only a project at the repo root is found.</p>
+    <ul>
+      <li><strong>Lean:</strong> <code>lean-toolchain</code> plus <code>lakefile.lean</code> or <code>lakefile.toml</code>. Image <code>debian:bookworm-slim</code>. With the network on, the prep step installs the toolchain named in <code>lean-toolchain</code> and fetches the Lake dependencies. For Mathlib it also runs <code>lake exe cache get</code>. With the network off, the check step runs <code>lake build</code>, then <code>#print axioms</code> on a generated file.</li>
+      <li><strong>Rocq:</strong> <code>_CoqProject</code>, or a <code>dune-project</code> with a Coq or Rocq stanza. Image <code>rocq/rocq-prover:9.1</code>. With the network off, the check step builds with <code>dune build</code> when there is a <code>dune-project</code>, otherwise from a makefile generated from <code>_CoqProject</code>. Then it runs <code>Print Assumptions</code> on a generated file. Both the <code>rocq</code> command and the older <code>coq_makefile</code> and <code>coqc</code> are handled.</li>
+    </ul>
+
+    <h3>Which theorems are audited</h3>
+    <p>
+      Every spec in the head lock file, plus every theorem declared in a
+      changed proof file of the project's language, sorted by file and
+      name, at most 200. A theorem the checker cannot find by name
+      (a private name, or a name made by a macro) is skipped, not
+      reported.
+    </p>
+
+    <h3>Allowed axioms</h3>
+    <p>
+      Lean allows <code>propext</code>, <code>Classical.choice</code>,
+      and <code>Quot.sound</code>. Rocq allows none. A
+      <code>.paranoid.toml</code> list adds to that set:
+    </p>
+    <pre><code>[formal]
+allowed_axioms = ["Classical.choice"]</code></pre>
+    <p>
+      <code>sorryAx</code>, <code>Lean.ofReduceBool</code>, and
+      <code>Lean.trustCompiler</code> are never allowed. Listing one is
+      a policy error (exit 3). See <a href="policy.html">Team policy file</a>.
+      A Rocq theorem that ends in <code>Admitted.</code> shows up as an
+      axiom named after the theorem, so FV010 fires on it.
+    </p>
+
+    <h3>The rules</h3>
+    <table>
+      <tr><th>Rule</th><th>Severity</th><th>What it catches</th></tr>
+      <tr><td>FV009</td><td>critical</td><td>The proof project does not build in the clean room. The evidence is the first error lines</td></tr>
+      <tr><td>FV010</td><td>high</td><td>The kernel reports an axiom outside the allowed set for an audited theorem. One finding per theorem and axiom</td></tr>
+      <tr><td>FV011</td><td>info</td><td>The re-check was asked for but could not run: no runtime, no proof project at the root, a failed toolchain install, or a timeout</td></tr>
+    </table>
+    <p>
+      When the re-check runs, the report lists the check
+      <code>formal-verification/recheck</code> in <code>checks_run</code>.
+      When it cannot run, the same name is in <code>checks_skipped</code>
+      with the reason, and FV011 carries the reason as evidence.
+    </p>
+
     <h2>What this does and does not prove</h2>
     <ul>
-      <li>The rules read text. A determined agent can hide a hole behind a macro or a notation. A later opt-in re-check, built on the checker itself, is planned to close that gap.</li>
+      <li>The rules read text. A determined agent can hide a hole behind a macro or a notation. The opt-in <a href="#recheck">re-check</a> asks the checker itself and closes that gap.</li>
       <li>A proof is about a theorem. paranoid can show the theorem did not change since a human approved it. It cannot tell you the approved theorem says what you meant.</li>
       <li>Proofs made for code in other languages are about a Lean model of that code. Tests that compare the model and the code can show they agree on many inputs, not on all inputs.</li>
     </ul>

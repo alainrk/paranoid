@@ -21,6 +21,7 @@ import (
 	"github.com/alainrk/paranoid/internal/history"
 	"github.com/alainrk/paranoid/internal/policy"
 	"github.com/alainrk/paranoid/internal/registry"
+	"github.com/alainrk/paranoid/internal/sandbox"
 )
 
 // defaultFailUnder is the --fail-under threshold used when neither the
@@ -61,8 +62,16 @@ type verifyInput struct {
 	sandboxImage   string
 	sandboxTimeout time.Duration
 	compareBase    bool
-	claimsFile     string
-	sessionFile    string
+	// formalCheck turns on the opt-in clean-room proof re-check
+	// (--formal-check). formalImage and formalTimeout tune it; a zero
+	// timeout means sandbox.DefaultFormalTimeout. formalRunner replaces
+	// runtime detection in tests.
+	formalCheck   bool
+	formalImage   string
+	formalTimeout time.Duration
+	formalRunner  *sandbox.Runner
+	claimsFile    string
+	sessionFile   string
 	// baselinePath overrides the auto-detected baseline location when
 	// set; noBaseline skips loading a baseline entirely, even the
 	// auto-detected one. Both empty means: load
@@ -239,6 +248,15 @@ func runVerify(ctx context.Context, in verifyInput, now func() time.Time) (findi
 	}
 	if fv.skipped != nil {
 		checksSkipped = append(checksSkipped, *fv.skipped)
+	}
+
+	fr := runFormalRecheckStage(ctx, repo, in, headRef, changes, pol.Formal)
+	findings = append(findings, fr.findings...)
+	if fr.ran {
+		checksRun = append(checksRun, checkFormalRecheck)
+	}
+	if fr.skipped != nil {
+		checksSkipped = append(checksSkipped, *fr.skipped)
 	}
 
 	checksRun = append(checksRun, checkErrHandling, checkSafety, checkConfigIntegrity, checkGoTestIntegrity, checkJSTestIntegrity, checkPyTestIntegrity)

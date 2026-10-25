@@ -35,6 +35,9 @@ func newVerifyCmd() *cobra.Command {
 		sandboxImage   string
 		sandboxTimeout time.Duration
 		compareBase    bool
+		formalCheck    bool
+		formalImage    string
+		formalTimeout  time.Duration
 		claimsFile     string
 		sessionFile    string
 		baselinePath   string
@@ -88,6 +91,9 @@ func newVerifyCmd() *cobra.Command {
 				sandboxImage:   sandboxImage,
 				sandboxTimeout: sandboxTimeout,
 				compareBase:    compareBase,
+				formalCheck:    formalCheck,
+				formalImage:    formalImage,
+				formalTimeout:  formalTimeout,
 				claimsFile:     claimsFile,
 				sessionFile:    sessionFile,
 				baselinePath:   baselinePath,
@@ -138,6 +144,9 @@ func newVerifyCmd() *cobra.Command {
 	cmd.Flags().StringVar(&sandboxImage, "sandbox-image", "", "override the container image for the clean-room run (must include coverage tooling for SBX005: go, pytest-cov if the project already depends on it, or jest/vitest)")
 	cmd.Flags().DurationVar(&sandboxTimeout, "sandbox-timeout", sandbox.DefaultTimeout, "kill the clean-room run after this long")
 	cmd.Flags().BoolVar(&compareBase, "compare-base", false, "also run the suite at base and compare executed test counts (SBX003)")
+	cmd.Flags().BoolVar(&formalCheck, "formal-check", false, "also rebuild the Lean or Rocq proof project in a container and ask the kernel which axioms each audited theorem uses (FV009 to FV011); uses the --sandbox runtime")
+	cmd.Flags().StringVar(&formalImage, "formal-image", "", "override the container image for --formal-check")
+	cmd.Flags().DurationVar(&formalTimeout, "formal-timeout", sandbox.DefaultFormalTimeout, "kill the --formal-check run after this long")
 	cmd.Flags().StringVar(&claimsFile, "claims", "", "free-text file with the agent's summary of what it did")
 	cmd.Flags().StringVar(&sessionFile, "session", "", "agent session file (Claude Code, Codex CLI, Gemini CLI, Aider, or Cursor); format is auto-detected")
 	// --claude-session is the flag's old name, from before --session

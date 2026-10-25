@@ -1,0 +1,9 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+PARANOID-BUILD-OK
+PARANOID-AUDIT
+PARANOID-BEGIN hole
+Axioms:
+hole : 2 = 2
+PARANOID-BEGIN uses_axiom
+Axioms:
+magic : 1 = 2
