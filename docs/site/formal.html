@@ -236,6 +236,7 @@
       <tr><td>lock, unlock</td><td>0 on success, 3 on any error</td></tr>
       <tr><td>status</td><td>0 when no locked spec is drifted or missing, 2 when one is, 3 on any error</td></tr>
       <tr><td>providers</td><td>0, or 3 on a configuration error</td></tr>
+      <tr><td>fill</td><td>0 when every hole was filled (or there is none), 2 when any hole failed or was skipped, 3 on any error</td></tr>
     </table>
     <p>
       Exit 2 is the same "check failed" code that <code>verify</code>
@@ -327,10 +328,9 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     <h2 id="online">Online features and providers</h2>
     <p>
       Some <code>paranoid formal</code> subcommands will call an LLM.
-      Subcommands that write proofs for you, such as <code>fill</code>
-      and <code>prove</code>, are planned and are not in this build.
-      The base they will use is in this build: the provider clients, the
-      settings, the caps, and the request log.
+      <code>fill</code> is in this build (see below). <code>prove</code>
+      is planned. Both use the same provider clients, settings, caps,
+      and request log.
     </p>
     <div class="card">
       <p>
@@ -359,6 +359,64 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     <p>
       Exit 0, or 3 on a configuration error (for example a secret in the
       policy file, or no model for a provider that has no default).
+    </p>
+
+    <h3 id="fill">paranoid formal fill</h3>
+    <pre><code>paranoid formal fill [path or name...] [--attempts N] [--dry-run] [--provider P] [--model M] [--base-url URL]
+                     [--max-requests N] [--max-tokens N] [--timeout D] [--check-timeout D]</code></pre>
+    <p>
+      Fills proof holes (<code>sorry</code>, <code>admit</code>,
+      <code>Admitted</code>) in the Lean or Rocq project at the repo
+      root. With no arguments it tries every hole in the tracked proof
+      files of that language. An argument that ends in
+      <code>.lean</code> or <code>.v</code> is a file (all its holes).
+      Any other argument is the qualified name of one theorem or lemma.
+      It uses the <code>proof</code> task settings.
+    </p>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--attempts</td><td>5</td><td>Most tries per hole</td></tr>
+      <tr><td>--dry-run</td><td>off</td><td>Print a unified diff and write nothing</td></tr>
+      <tr><td>--provider, --model, --base-url</td><td>from settings</td><td>Override the settings for the proof task</td></tr>
+      <tr><td>--max-requests, --max-tokens, --timeout</td><td>100, 2,000,000, 60m</td><td>The run caps</td></tr>
+      <tr><td>--check-timeout</td><td>10m</td><td>Time limit for each checker run</td></tr>
+    </table>
+    <h4>What is sent</h4>
+    <p>
+      Before the first call the command prints the provider, the model,
+      and the files whose content will be sent. For each hole the model
+      gets the whole file, the declaration, and on a retry the latest
+      checker output and its own last answer. It is told to answer with
+      one fenced code block holding only the replacement proof (Lean:
+      the term or <code>by</code> block after <code>:=</code>; Rocq:
+      <code>Proof.</code> through <code>Qed.</code>), never to change the
+      statement, and never to use holes, axioms, or escape hatches. Any
+      other shape of answer is rejected.
+    </p>
+    <h4>The gate</h4>
+    <p>An answer is accepted only when all of these hold. It is spliced into a scratch copy, and only the proof span changes.</p>
+    <ul>
+      <li>The local checker exits 0 (Lean: <code>lake env lean</code> from the project root; Rocq: <code>rocq compile</code> or <code>coqc</code> with the <code>-Q</code> and <code>-R</code> flags of <code>_CoqProject</code>).</li>
+      <li>A re-parse shows the same declarations, the same statement hash for the target, and unchanged text for every other declaration. No extra command follows the proof, and the new proof has no hole or escape.</li>
+      <li>The static rules FV001, FV002, and FV006 find nothing new, comparing the original file with the candidate.</li>
+      <li>A kernel axiom audit of the target, run in the scratch copy, gives an answer and lists only allowed axioms (the same set as the re-check, including the policy <code>[formal] allowed_axioms</code> list; <code>sorryAx</code> is never allowed).</li>
+    </ul>
+    <h4>Output and exit codes</h4>
+    <p>
+      Accepted proofs are written to the worktree, or shown as a diff
+      with <code>--dry-run</code>. Each declaration ends as
+      <code>filled</code>, <code>failed</code> (with the first lines of
+      the last checker error), or <code>skipped</code> (a cap or the
+      run timeout was hit, and the line names it). Exit 0 when every
+      hole was filled, 2 otherwise, 3 on an error (no key, a provider
+      error, no proof project, toolchain not found).
+    </p>
+    <p>
+      <strong>Needs a local toolchain.</strong> In this version the
+      checker runs on your machine, so Lean (<code>lake</code>) or Rocq
+      must be installed. If it is not, the command stops with a message.
+      <code>paranoid verify --formal-check</code> stays the final word:
+      it rebuilds the project in a clean container.
     </p>
 
     <h3>Providers</h3>

@@ -384,7 +384,7 @@ func (p ProofProject) leanPlan(targets []AuditTarget) Plan {
 		}
 		modSet[mod] = true
 		plan.Targets = append(plan.Targets, t)
-		fmt.Fprintf(&body, "#print axioms %s\n", t.Name)
+		body.WriteString(auditLine(KindLean, "", t.Name))
 	}
 	mods := sortedKeys(modSet)
 	var src strings.Builder
@@ -408,7 +408,7 @@ func (p ProofProject) rocqPlan(targets []AuditTarget) Plan {
 		}
 		modSet[mod] = true
 		plan.Targets = append(plan.Targets, t)
-		fmt.Fprintf(&body, "Goal True. idtac \"%s%s\". Abort.\nPrint Assumptions %s.%s.\n", markTheorem, t.Name, mod, t.Name)
+		body.WriteString(auditLine(KindRocq, mod, t.Name))
 	}
 	var src strings.Builder
 	for _, m := range sortedKeys(modSet) {
@@ -418,6 +418,46 @@ func (p ProofProject) rocqPlan(targets []AuditTarget) Plan {
 	plan.AuditSource = src.String()
 	plan.Check = p.rocqCheckScript()
 	return plan
+}
+
+// auditLine is the audit text for one theorem. For Rocq, module is the
+// module that holds it, or "" when the theorem sits in the same file as
+// the audit text.
+func auditLine(kind, module, name string) string {
+	if kind == KindLean {
+		return fmt.Sprintf("#print axioms %s\n", name)
+	}
+	full := name
+	if module != "" {
+		full = module + "." + name
+	}
+	return fmt.Sprintf("Goal True. idtac \"%s%s\". Abort.\nPrint Assumptions %s.\n", markTheorem, name, full)
+}
+
+// InlineAuditSource returns audit text to append to a proof file, one
+// block per theorem, in the order given. It uses the same lines as the
+// generated audit file of the clean-room re-check. It reports false when
+// a name is not safe to put into generated proof text.
+func InlineAuditSource(kind string, names []string) (string, bool) {
+	var b strings.Builder
+	for _, n := range names {
+		if !safeIdent(n) {
+			return "", false
+		}
+		b.WriteString(auditLine(kind, "", n))
+	}
+	return b.String(), true
+}
+
+// ParseAxioms reads the checker output of an audit made with
+// InlineAuditSource or the audit file of the re-check. It maps each
+// theorem name to its sorted axiom list. A theorem the kernel gave no
+// answer for is absent.
+func ParseAxioms(kind, output string) map[string][]string {
+	if kind == KindLean {
+		return ParseLeanAxioms(output)
+	}
+	return ParseRocqAxioms(output)
 }
 
 func sortedKeys(m map[string]bool) []string {

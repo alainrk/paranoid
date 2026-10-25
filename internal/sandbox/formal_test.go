@@ -509,3 +509,22 @@ func TestRunProofFailureModes(t *testing.T) {
 		require.Contains(t, res.SkipReason, "timed out")
 	})
 }
+
+func TestInlineAuditSource(t *testing.T) {
+	got, ok := InlineAuditSource(KindLean, []string{"MyList.helper", "other"})
+	require.True(t, ok)
+	require.Equal(t, "#print axioms MyList.helper\n#print axioms other\n", got)
+
+	got, ok = InlineAuditSource(KindRocq, []string{"a", "M.b"})
+	require.True(t, ok)
+	require.Equal(t, "Goal True. idtac \"PARANOID-BEGIN a\". Abort.\nPrint Assumptions a.\n"+
+		"Goal True. idtac \"PARANOID-BEGIN M.b\". Abort.\nPrint Assumptions M.b.\n", got)
+
+	for _, bad := range []string{"a b", "a\nb", "x\"y", ""} {
+		_, ok = InlineAuditSource(KindLean, []string{bad})
+		require.False(t, ok, "%q", bad)
+	}
+
+	require.Equal(t, map[string][]string{"a": {"propext"}}, ParseAxioms(KindLean, "'a' depends on axioms: [propext]\n"))
+	require.Equal(t, map[string][]string{"a": {}}, ParseAxioms(KindRocq, "PARANOID-BEGIN a\nClosed under the global context\n"))
+}
