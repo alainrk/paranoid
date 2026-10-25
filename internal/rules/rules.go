@@ -466,10 +466,24 @@ var registry = []Rule{
 		Summary:  "The proof checker reports an axiom outside the allowed set for an audited theorem.",
 		Fix:      "Remove the dependency on the disallowed axiom for the theorem reported near {{.File}} (around {{atLine .Line}}). Replace the hole or the axiom with a real proof. Add the axiom to [formal] allowed_axioms in .paranoid.toml only if a human accepts it. Evidence: {{evidenceOrNote .Evidence}}.",
 		Doc: Doc{
-			What:           "with `--formal-check`, after a successful build, paranoid asks the checker which axioms each audited theorem depends on (Lean `#print axioms`, Rocq `Print Assumptions`). Audited theorems are every spec in the head spec lock file plus every theorem declared in a changed proof file, up to 200. Lean allows `propext`, `Classical.choice`, and `Quot.sound`; Rocq allows nothing. The `[formal] allowed_axioms` list in `.paranoid.toml` adds to that set. `sorryAx`, `Lean.ofReduceBool`, and `Lean.trustCompiler` are never allowed. One finding per theorem and axiom. A Rocq `Admitted` theorem shows up as an axiom named after the theorem.",
+			What:           "with `--formal-check`, after a successful build, paranoid asks the checker which axioms each audited theorem depends on (Lean `#print axioms`, Rocq `Print Assumptions`). Audited theorems are every spec in the head spec lock file plus every theorem declared in a changed proof file (Lean `private` ones excluded), up to 200. Lean allows `propext`, `Classical.choice`, and `Quot.sound`; Rocq allows nothing. The `[formal] allowed_axioms` list in `.paranoid.toml` adds to that set. `sorryAx`, `Lean.ofReduceBool`, and `Lean.trustCompiler` are never allowed. One finding per theorem and axiom. A Rocq `Admitted` theorem shows up as an axiom named after the theorem.",
 			Why:            "the checker answers this exactly. A `sorry` hidden behind a macro or notation, an added axiom, or a trust-the-compiler tactic all show up here, even when the static rules read nothing wrong in the text.",
 			Example:        "a theorem is proved with a tactic that expands to `sorry`. `#print axioms` reports `sorryAx`.",
-			FalsePositives: "a project that uses an axiom on purpose, such as a classical choice principle beyond the default set, fires until a human adds it to `[formal] allowed_axioms`. Theorems the checker cannot resolve by name (private names, names made by macros) are skipped, not reported.",
+			FalsePositives: "a project that uses an axiom on purpose, such as a classical choice principle beyond the default set, fires until a human adds it to `[formal] allowed_axioms`. A theorem the checker cannot resolve by name gets FV012 instead.",
+		},
+	},
+	{
+		ID:       "FV012",
+		Title:    "Audited theorem has no kernel answer",
+		Severity: finding.High,
+		Category: finding.FormalVerification,
+		Summary:  "With --formal-check, the checker gave no axiom answer for a theorem that was asked about.",
+		Fix:      "Make the theorem {{.File}} (around {{atLine .Line}}) resolvable by its full name in the clean room, or remove the cause of the checker error, so the kernel can report its axioms. Evidence: {{evidenceOrNote .Evidence}}.",
+		Doc: Doc{
+			What:           "with `--formal-check`, after a successful build, a theorem that was asked about (every spec in the head lock file plus every theorem declared in a changed proof file) has no parsed answer: Lean printed an error instead of an axioms line, or the Rocq audit line for it failed and was dropped by the retry loop. One finding per theorem, at its file and line. The evidence names the theorem and, when the audit output has an error line that mentions it, that line. A failed build gives only FV009.",
+			Why:            "a theorem the kernel will not talk about is a theorem nobody checked. If a missing answer were ignored, an agent could make a locked or changed theorem unresolvable and pass the audit.",
+			Example:        "a locked spec is renamed in the lock file only; `#print axioms` reports `unknown constant`.",
+			FalsePositives: "theorems the checker cannot find by the name the parser sees fire too, such as names made by macros, or theorems in a Rocq Module Type or functor. Fix the lock name or move the theorem; there is no allow list. Lean `private` declarations are not audited, because they cannot be named from another file; that is safe, since any axiom a private lemma uses also shows up in every public theorem that uses it. Rocq theorems in a Module are printed with their full path, and Section theorems by their plain name.",
 		},
 	},
 	{

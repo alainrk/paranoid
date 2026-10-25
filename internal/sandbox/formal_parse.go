@@ -45,6 +45,13 @@ func ParseProofOutput(kind, output string, targets []AuditTarget) ProofResult {
 		return res
 	}
 	audit := strings.Join(lines[auditAt+1:], "\n")
+	var errText string
+	if i := strings.Index("\n"+audit, "\n"+markErrors+"\n"); i >= 0 {
+		errText = audit[min(i, len(audit)):]
+		audit = audit[:min(i, len(audit))]
+		errText = strings.TrimPrefix(strings.TrimPrefix(errText, "\n"), markErrors)
+	}
+	res.AuditErrors = errorLines(audit + "\n" + errText)
 	var found map[string][]string
 	if kind == KindLean {
 		found = ParseLeanAxioms(audit)
@@ -65,6 +72,21 @@ func ParseProofOutput(kind, output string, targets []AuditTarget) ProofResult {
 		return res.Theorems[i].Name < res.Theorems[j].Name
 	})
 	return res
+}
+
+// errorLines keeps the lines that look like errors, trimmed, in order,
+// without duplicates.
+func errorLines(text string) string {
+	var out []string
+	seen := map[string]bool{}
+	for _, l := range strings.Split(text, "\n") {
+		t := strings.TrimSpace(l)
+		if t != "" && strings.Contains(strings.ToLower(t), "error") && !seen[t] {
+			seen[t] = true
+			out = append(out, t)
+		}
+	}
+	return strings.Join(out, "\n")
 }
 
 // firstLines returns the first n non-empty trimmed lines joined by

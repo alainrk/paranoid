@@ -1,0 +1,4 @@
+PARANOID-BUILD-OK
+PARANOID-AUDIT
+'good_add' depends on axioms: [propext]
+'extra' does not depend on any axioms

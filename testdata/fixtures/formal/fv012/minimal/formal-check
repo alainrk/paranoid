@@ -1,0 +1,4 @@
+PARANOID-BUILD-OK
+PARANOID-AUDIT
+'good_add' depends on axioms: [propext]
+paranoid_axioms_audit.lean:4:14: error: unknown constant 'extra'

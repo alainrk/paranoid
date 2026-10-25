@@ -137,6 +137,7 @@ func TestSeveritiesMatchPlan(t *testing.T) {
 		"FV009":  finding.Critical,
 		"FV010":  finding.High,
 		"FV011":  finding.Info,
+		"FV012":  finding.High,
 	}
 	// Severities are frozen once released. This test only grows; rows
 	// are never edited or removed.

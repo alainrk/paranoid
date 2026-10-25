@@ -14,6 +14,9 @@ type Decl struct {
 	Kind      string // keyword as written: "theorem", "lemma", "Theorem", ...
 	Line      int    // 1-based line of the keyword
 	Statement string // normalized statement text (see Normalize)
+	// Private is true for a Lean declaration marked private. It cannot
+	// be named from another file.
+	Private bool
 }
 
 // Normalize collapses every run of whitespace to one space and trims. The
@@ -153,6 +156,29 @@ func skipSpaceNoNewline(b []byte, p int) int {
 // leanDeclStart reports whether the keyword at p begins a declaration:
 // optional attributes and modifiers walk back to the start of a line.
 func leanDeclStart(b []byte, p int) bool {
+	_, ok := leanDeclChain(b, p)
+	return ok
+}
+
+// leanIsPrivate reports whether a "private" modifier sits in the chain
+// of modifiers and attributes just before the keyword at p.
+func leanIsPrivate(b []byte, p int) bool {
+	q, ok := leanDeclChain(b, p)
+	if !ok {
+		return false
+	}
+	for _, w := range strings.Fields(string(b[q:p])) {
+		if w == "private" {
+			return true
+		}
+	}
+	return false
+}
+
+// leanDeclChain walks back over attributes and modifiers from the
+// keyword at p. It returns where the chain starts and whether that
+// start is the first thing on its line.
+func leanDeclChain(b []byte, p int) (int, bool) {
 	q := p
 	for {
 		r := q
@@ -193,10 +219,10 @@ func leanDeclStart(b []byte, p int) bool {
 	// q is where the chain starts. It must be first on its line.
 	for i := q - 1; i >= 0 && b[i] != '\n'; i-- {
 		if !isSpaceByte(b[i]) {
-			return false
+			return 0, false
 		}
 	}
-	return true
+	return q, true
 }
 
 // startsLeanCommand reports whether rest begins a new command.
@@ -286,7 +312,7 @@ func leanDecls(src []byte) []Decl {
 			name = joinScope(stack, name)
 		}
 		stmt := Normalize(string(keep[end:leanStatementEnd(b, end)]))
-		out = append(out, Decl{Name: name, Kind: c.tok, Line: li.line(c.off), Statement: stmt})
+		out = append(out, Decl{Name: name, Kind: c.tok, Line: li.line(c.off), Statement: stmt, Private: leanIsPrivate(b, c.off)})
 	}
 	return out
 }

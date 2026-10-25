@@ -170,7 +170,7 @@
       <tr><td>--sandbox-image string</td><td>suite default</td><td>Override the container image (must include coverage tooling for SBX005: go, pytest-cov if the project already depends on it, or jest/vitest)</td></tr>
       <tr><td>--sandbox-timeout duration</td><td>10m</td><td>Kill the clean-room run after this long</td></tr>
       <tr><td>--compare-base</td><td>off</td><td>Also run the suite at base and compare executed test counts (SBX003) and coverage (SBX005)</td></tr>
-      <tr><td>--formal-check</td><td>off</td><td>Also rebuild the Lean or Rocq proof project in a container and ask the kernel which axioms each audited theorem uses (FV009 to FV011). Uses the <code>--sandbox</code> runtime. See <a href="formal.html#recheck">Formal verification</a></td></tr>
+      <tr><td>--formal-check</td><td>off</td><td>Also rebuild the Lean or Rocq proof project in a container and ask the kernel which axioms each audited theorem uses (FV009 to FV012). Uses the <code>--sandbox</code> runtime. See <a href="formal.html#recheck">Formal verification</a></td></tr>
       <tr><td>--formal-image string</td><td>per project</td><td>Override the container image for <code>--formal-check</code></td></tr>
       <tr><td>--formal-timeout duration</td><td>30m</td><td>Kill the <code>--formal-check</code> run after this long</td></tr>
       <tr><td>--claims string</td><td>none</td><td>Free-text file with the agent's summary</td></tr>

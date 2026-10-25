@@ -112,6 +112,15 @@ func TestFormalRecheckFindings(t *testing.T) {
 		require.NotEmpty(t, audit)
 	})
 
+	t.Run("theorem with no kernel answer", func(t *testing.T) {
+		rt := &fakeProofRuntime{checkOutput: "PARANOID-BUILD-OK\nPARANOID-AUDIT\n'a' does not depend on any axioms\naudit.lean:3:14: error: unknown constant 'b'\n"}
+		res := formalRecheckRun(t, rt, "auto", leanProject, head)
+		require.Equal(t, []string{"FV012"}, ruleIDs(res))
+		require.Equal(t, "Proofs/A.lean", res.Findings[0].File)
+		require.Equal(t, 2, res.Findings[0].Line)
+		require.Contains(t, res.Findings[0].Evidence, "unknown constant 'b'")
+	})
+
 	t.Run("build failure", func(t *testing.T) {
 		rt := &fakeProofRuntime{checkOutput: "PARANOID-BUILD-FAILED\nerror: Proofs/A.lean:2:3: boom\n"}
 		res := formalRecheckRun(t, rt, "auto", leanProject, head)
@@ -148,7 +157,7 @@ func TestFormalRecheckPolicyAllowsAxiom(t *testing.T) {
 		"Proofs/A.lean":  "theorem a : True := trivial\ntheorem b : 1 = 2 := magic\n",
 		".paranoid.toml": "[formal]\nallowed_axioms = [\"magic\"]\n",
 	}
-	rt := &fakeProofRuntime{checkOutput: "PARANOID-BUILD-OK\nPARANOID-AUDIT\n'b' depends on axioms: [magic, sorryAx]\n"}
+	rt := &fakeProofRuntime{checkOutput: "PARANOID-BUILD-OK\nPARANOID-AUDIT\n'a' does not depend on any axioms\n'b' depends on axioms: [magic, sorryAx]\n"}
 	res := formalRecheckRun(t, rt, "auto", leanProject, head)
 	require.Equal(t, []string{"FV010"}, ruleIDs(res))
 	require.Equal(t, "b depends on axiom sorryAx", res.Findings[0].Evidence)
@@ -201,14 +210,18 @@ func TestSelectAuditTargets(t *testing.T) {
 	}
 	write("Proofs/A.lean", "namespace N\ntheorem one : True := trivial\nend N\n\nlemma two : True := trivial\n")
 	write("Proofs/B.lean", "theorem locked_one : True := trivial\n")
+	write("Proofs/C.lean", "private theorem hidden : True := trivial\n@[simp] private lemma hidden2 : True := trivial\ntheorem shown : True := trivial\n")
+	write("Proofs/D.lean", "private theorem locked_private : True := trivial\n")
 	write("Other.v", "Theorem rocq_one : True. Proof. exact I. Qed.\n")
 	write(".paranoid-specs.json", `{"version":1,"specs":[`+
 		`{"name":"locked_one","file":"Proofs/B.lean","statement_sha256":"`+strings.Repeat("a", 64)+`"},`+
 		`{"name":"two","file":"Proofs/A.lean","statement_sha256":"`+strings.Repeat("b", 64)+`"},`+
+		`{"name":"locked_private","file":"Proofs/D.lean","statement_sha256":"`+strings.Repeat("d", 64)+`"},`+
 		`{"name":"rocq_spec","file":"Other.v","statement_sha256":"`+strings.Repeat("c", 64)+`"}]}`)
 
 	changes := []gitx.Change{
 		{Status: gitx.Modified, Path: "Proofs/A.lean"},
+		{Status: gitx.Added, Path: "Proofs/C.lean"},
 		{Status: gitx.Deleted, Path: "Gone.lean"},
 		{Status: gitx.Added, Path: "Other.v"},
 		{Status: gitx.Modified, Path: "main.go"},
@@ -218,7 +231,8 @@ func TestSelectAuditTargets(t *testing.T) {
 		{Name: "N.one", File: "Proofs/A.lean"},
 		{Name: "two", File: "Proofs/A.lean"},
 		{Name: "locked_one", File: "Proofs/B.lean"},
-	}, targets)
+		{Name: "shown", File: "Proofs/C.lean"},
+	}, targets, "private declarations are not audited, locked or not")
 	require.Equal(t, 2, lines["Proofs/A.lean\x00N.one"])
 	require.Equal(t, 5, lines["Proofs/A.lean\x00two"], "a locked spec that is also declared in a changed file gets its line")
 	require.NotContains(t, lines, "Proofs/B.lean\x00locked_one")

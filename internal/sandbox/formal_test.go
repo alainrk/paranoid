@@ -198,6 +198,7 @@ func TestLeanPlan(t *testing.T) {
 	require.Equal(t, ".paranoid/axioms_audit.lean", plan.AuditFile)
 	require.Equal(t, "import Proofs.Bad\nimport Proofs.Good\n#print axioms bad_hole\n#print axioms uses_axiom\n#print axioms good_add\n", plan.AuditSource)
 	require.Len(t, plan.Targets, 3)
+	require.Len(t, plan.Requested, 5, "unmappable targets are still requested, so they can be reported")
 
 	require.Contains(t, plan.Prep, "elan toolchain install 'leanprover/lean4:v4.15.0'")
 	require.Contains(t, plan.Prep, "lake resolve-deps")
@@ -218,6 +219,12 @@ func TestBuildPlanCapsTargets(t *testing.T) {
 	}
 	plan := ProofProject{Kind: KindLean}.BuildPlan(targets)
 	require.Len(t, plan.Targets, MaxAuditTargets)
+}
+
+func TestRocqPlanQualifiesModuleTheorems(t *testing.T) {
+	p := ProofProject{Kind: KindRocq, Dirs: ParseCoqProject("-Q . Demo\n")}
+	plan := p.BuildPlan([]AuditTarget{{Name: "M.push_pop", File: "Stack.v"}})
+	require.Contains(t, plan.AuditSource, "Print Assumptions Demo.Stack.M.push_pop.\n")
 }
 
 func TestRocqPlan(t *testing.T) {
@@ -352,6 +359,13 @@ func TestParseProofOutput(t *testing.T) {
 		res := ParseProofOutput(KindLean, "sh: 1: lake: not found\n", targets)
 		require.False(t, res.Ran)
 		require.Contains(t, res.SkipReason, "lake: not found")
+	})
+	t.Run("errors section is split off and kept", func(t *testing.T) {
+		out := markBuildOK + "\n" + markAudit + "\nPARANOID-BEGIN good_add\nClosed under the global context\n" +
+			markErrors + "\nFile \"./a.v\", line 4, characters 1-2:\nError: The reference nope was not found in the current environment.\n"
+		res := ParseProofOutput(KindRocq, out, targets)
+		require.Equal(t, []TheoremAxioms{{Name: "good_add", File: "Good.v", Axioms: []string{}}}, res.Theorems)
+		require.Contains(t, res.AuditErrors, "reference nope was not found")
 	})
 	t.Run("build ok but no audit marker", func(t *testing.T) {
 		res := ParseProofOutput(KindLean, markBuildOK+"\n", targets)

@@ -92,6 +92,32 @@ func TestAnalyzeRecheck(t *testing.T) {
 		require.Len(t, got, 1)
 		require.Equal(t, "hole depends on axiom hole", got[0].Evidence)
 	})
+	t.Run("requested theorem with no answer gives FV012", func(t *testing.T) {
+		got := AnalyzeRecheck(RecheckInput{
+			Kind: KindLean, BuildOK: true,
+			Requested: []Theorem{
+				{Name: "a", File: "A.lean", Line: 1},
+				{Name: "locked", File: "B.lean", Line: 7},
+				{Name: "lock", File: "B.lean", Line: 9},
+			},
+			Theorems:    []Theorem{{Name: "a", File: "A.lean", Axioms: []string{}}},
+			AuditErrors: "audit.lean:6:14: error: unknown constant 'locked'",
+		})
+		require.Len(t, got, 2)
+		require.Equal(t, "FV012", got[0].RuleID)
+		require.Equal(t, finding.High, got[0].Severity)
+		require.Equal(t, "B.lean", got[0].File)
+		require.Equal(t, 7, got[0].Line)
+		require.Contains(t, got[0].Evidence, "no answer for locked")
+		require.Contains(t, got[0].Evidence, "unknown constant 'locked'")
+		require.Equal(t, 9, got[1].Line)
+		require.NotContains(t, got[1].Evidence, "unknown constant", "a name that is only a prefix of another does not match")
+	})
+	t.Run("failed build hides FV012", func(t *testing.T) {
+		got := AnalyzeRecheck(RecheckInput{Kind: KindLean, BuildOK: false, Requested: []Theorem{{Name: "a", File: "A.lean"}}})
+		require.Len(t, got, 1)
+		require.Equal(t, "FV009", got[0].RuleID)
+	})
 	t.Run("deterministic", func(t *testing.T) {
 		in := RecheckInput{Kind: KindRocq, BuildOK: true, Theorems: []Theorem{
 			{Name: "t", File: "A.v", Axioms: []string{"b", "a", "c"}},

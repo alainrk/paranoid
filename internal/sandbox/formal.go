@@ -48,6 +48,7 @@ const (
 	markBuildOK     = "PARANOID-BUILD-OK"
 	markBuildFailed = "PARANOID-BUILD-FAILED"
 	markAudit       = "PARANOID-AUDIT"
+	markErrors      = "PARANOID-ERRORS"
 	markTheorem     = "PARANOID-BEGIN "
 )
 
@@ -98,6 +99,14 @@ type ProofResult struct {
 	// for, sorted by file then name. A theorem the kernel could not
 	// resolve is left out.
 	Theorems []TheoremAxioms
+	// Requested lists every theorem the re-check asked the kernel
+	// about, answered or not. A requested theorem missing from
+	// Theorems got no answer.
+	Requested []AuditTarget
+	// AuditErrors holds the audit step's output lines that look like
+	// errors, including errors from compiles the Rocq retry loop
+	// threw away.
+	AuditErrors string
 }
 
 // toolchainRe limits what a lean-toolchain file may hold, because the
@@ -331,6 +340,9 @@ type Plan struct {
 	Check       string
 	AuditFile   string // file name at the tree root
 	AuditSource string
+	// Requested is every target after sorting and the cap, including
+	// ones that could not be put into the audit file.
+	Requested []AuditTarget
 	// Targets are the audit targets that made it into the audit file,
 	// in order. Targets whose module path could not be worked out are
 	// dropped.
@@ -351,10 +363,14 @@ func (p ProofProject) BuildPlan(targets []AuditTarget) Plan {
 	if len(targets) > MaxAuditTargets {
 		targets = targets[:MaxAuditTargets]
 	}
+	var plan Plan
 	if p.Kind == KindLean {
-		return p.leanPlan(targets)
+		plan = p.leanPlan(targets)
+	} else {
+		plan = p.rocqPlan(targets)
 	}
-	return p.rocqPlan(targets)
+	plan.Requested = targets
+	return plan
 }
 
 func (p ProofProject) leanPlan(targets []AuditTarget) Plan {
@@ -527,14 +543,18 @@ else
 fi
 echo ` + markAudit + `
 i=0
+: > /work/.paranoid/audit.errs
 while [ "$i" -lt 10 ]; do
   eval "$RC $QR ` + rocqAuditFile + `" > /work/.paranoid/audit.out 2>&1 && break
+  cat /work/.paranoid/audit.out >> /work/.paranoid/audit.errs
   n=$(sed -n 's/^File ".*axioms_audit\.v", line \([0-9][0-9]*\).*/\1/p' /work/.paranoid/audit.out | head -n 1)
   [ -z "$n" ] && break
   sed -i "${n}d" ` + rocqAuditFile + `
   i=$((i+1))
 done
 cat /work/.paranoid/audit.out
+echo ` + markErrors + `
+cat /work/.paranoid/audit.errs
 `)
 	return b.String()
 }
@@ -643,5 +663,7 @@ func (r *Runner) RunProof(ctx context.Context, exportDir string, p ProofProject,
 	if code != 0 {
 		return ProofResult{Ran: false, SkipReason: fmt.Sprintf("the check step failed to run (exit %d): %s", code, lastLines(string(out), 3))}, nil
 	}
-	return ParseProofOutput(p.Kind, string(out), plan.Targets), nil
+	res := ParseProofOutput(p.Kind, string(out), plan.Targets)
+	res.Requested = plan.Requested
+	return res, nil
 }

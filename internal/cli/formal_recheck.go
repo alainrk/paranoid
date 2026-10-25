@@ -71,6 +71,12 @@ func runFormalRecheckStage(ctx context.Context, repo *gitx.Repo, in verifyInput,
 		BuildOK:     result.BuildOK,
 		BuildErrors: result.BuildErrors,
 		Extra:       pol.AllowedAxioms,
+		AuditErrors: result.AuditErrors,
+	}
+	for _, t := range result.Requested {
+		input.Requested = append(input.Requested, analyzeformal.Theorem{
+			Name: t.Name, File: t.File, Line: lines[t.File+"\x00"+t.Name],
+		})
 	}
 	for _, t := range result.Theorems {
 		input.Theorems = append(input.Theorems, analyzeformal.Theorem{
@@ -122,7 +128,7 @@ func selectAuditTargets(exportDir, kind string, changes []gitx.Change) ([]sandbo
 	if raw, err := os.ReadFile(filepath.Join(exportDir, fparse.LockFileName)); err == nil { // #nosec G304 -- path inside our own export dir
 		if lock, err := fparse.ParseLock(raw); err == nil {
 			for _, s := range lock.Specs {
-				if fparse.LangOf(s.File) == lang {
+				if fparse.LangOf(s.File) == lang && !isPrivateDecl(exportDir, lang, s.File, s.Name) {
 					add(s.File, s.Name, 0)
 				}
 			}
@@ -137,6 +143,12 @@ func selectAuditTargets(exportDir, kind string, changes []gitx.Change) ([]sandbo
 			continue
 		}
 		for _, d := range fparse.Decls(lang, raw) {
+			// A private Lean declaration cannot be named from the audit
+			// file. Skipping it is safe: any axiom it uses also shows up
+			// in every public theorem that uses it.
+			if d.Private {
+				continue
+			}
 			add(c.Path, d.Name, d.Line)
 		}
 	}
@@ -147,4 +159,19 @@ func selectAuditTargets(exportDir, kind string, changes []gitx.Change) ([]sandbo
 		return targets[i].Name < targets[j].Name
 	})
 	return targets, lines
+}
+
+// isPrivateDecl reports whether the named declaration is private in the
+// given exported file.
+func isPrivateDecl(exportDir string, lang fparse.Lang, file, name string) bool {
+	raw, err := os.ReadFile(filepath.Join(exportDir, filepath.FromSlash(file))) // #nosec G304 -- path from the lock file inside our own export dir
+	if err != nil {
+		return false
+	}
+	for _, d := range fparse.Decls(lang, raw) {
+		if d.Name == name && d.Private {
+			return true
+		}
+	}
+	return false
 }

@@ -50,7 +50,7 @@ the agent cannot move the goalposts.
 |---|---|---|
 | 0 | Product rules: offline and online split | none |
 | 1 | Offline proof-audit rules (FV001 to FV008, CLM006), spec lock, `paranoid formal lock` and `status` | none |
-| 2 | Opt-in clean-room proof re-check and kernel axiom audit (FV009 to FV011) | none |
+| 2 | Opt-in clean-room proof re-check and kernel axiom audit (FV009 to FV012) | none |
 | 3 | Online foundation: `internal/llm`, three providers, key config, caps, request log | LLM only |
 | 4 | BYO: `paranoid formal fill` fills holes, checker in the loop, audit gate | LLM only |
 | 5 | paranoid-made: `paranoid formal prove`, model, spec approval, proof, differential tests | LLM only |
@@ -184,6 +184,7 @@ are never allowed, whatever the policy says.
 |---|---|---|
 | FV009 | critical | The proof project does not build in the clean room. Evidence is the first error lines. |
 | FV010 | high | The kernel reports an axiom outside the allowed set for an audited theorem. One finding per theorem and axiom. |
+| FV012 | high | An audited theorem has no kernel answer: Lean printed an error instead of an axioms line, or the Rocq audit line failed and was dropped. One finding per theorem, at its file and line, only when the build succeeded. Evidence is the first audit error line that mentions the theorem, when there is one. |
 | FV011 | info | The re-check was asked for but could not run: no runtime, no proof project at the root, toolchain install failed, or timeout. |
 
 ## Trust boundary, stated plainly
@@ -201,4 +202,4 @@ are never allowed, whatever the policy says.
 
 - Phase 0: done (AGENTS.md and roadmap updated).
 - Phase 1: done (FV001 to FV008, CLM006, spec lock file, `paranoid formal lock`, `unlock`, and `status`, fixtures, rules docs, docs site page `formal.html`).
-- Phase 2: done (`verify --formal-check`, `--formal-image`, `--formal-timeout`, FV009 to FV011, `[formal] allowed_axioms` in the policy file, `make formal-live` for the real-container tests). Not run for real: Mathlib projects.
+- Phase 2: done (`verify --formal-check`, `--formal-image`, `--formal-timeout`, FV009 to FV012, `[formal] allowed_axioms` in the policy file, `make formal-live` for the real-container tests). Not run for real: Mathlib projects.
