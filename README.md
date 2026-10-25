@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/png/paranoid-lockup-dark-bg.png">
-    <img src="assets/png/paranoid-lockup-light-bg.png" alt="paranoid" width="329">
-  </picture>
+  <img src="assets/png/paranoid-lockup-any-bg.png" alt="paranoid" width="329">
 </p>
 
 # paranoid
