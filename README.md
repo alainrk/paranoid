@@ -422,6 +422,7 @@ These findings come from the clean-room test run, described in
 | CLM003 | low      | A claimed action names an identifier the changed files never mention |
 | CLM004 | medium   | The agent claims N new tests; the diff contains fewer                |
 | CLM005 | low      | The diff touches far more files than the claims describe             |
+| CLM006 | medium   | The agent claims a proof, but no .lean or .v file changed            |
 
 Claims come from `--claims` (any free-text summary) or `--session` (an
 agent session file, assistant/agent messages only; see

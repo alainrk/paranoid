@@ -137,6 +137,20 @@ var registry = []Rule{
 		},
 	},
 	{
+		ID:       "CLM006",
+		Title:    "Proof claimed but no proof file changed",
+		Severity: finding.Medium,
+		Category: finding.Claims,
+		Summary:  "The claims say something was proved or formally verified, but the diff touches no .lean or .v file.",
+		Fix:      "Add or change the proof the claims describe in a .lean or .v file, or correct the claims so they stop saying something was proved. Evidence: {{evidenceOrNote .Evidence}}.",
+		Doc: Doc{
+			What:           "a claim line says something was proved, proven, formally verified, machine-checked, or that a proof was written or added (also \"proof of\"), and the diff touches no `.lean` (Lean 4) or `.v` (Rocq) file. Bare \"verified\" and \"verify\" are not proof claims. One finding per claim line.",
+			Why:            "a claim of a proof can be checked against the diff. If no proof file changed, nothing was proved in this change.",
+			Example:        "the claims say \"formally verified the parser\" and the diff only changes Go files.",
+			FalsePositives: "a proof kept in a language paranoid does not read (Isabelle, Agda, Dafny) fires. So does a claim about an older proof that this change did not touch. Medium severity reflects this.",
+		},
+	},
+	{
 		ID:       "DEP001",
 		Title:    "Dependency does not exist",
 		Severity: finding.Critical,

@@ -210,3 +210,40 @@ func TestCheckScopeCreepIdentifierHookErrorPropagates(t *testing.T) {
 	})
 	require.Error(t, err)
 }
+
+func TestCheckProofClaims(t *testing.T) {
+	tests := []struct {
+		name  string
+		text  string
+		files []string
+		want  int
+	}{
+		{"proved, no proof file", "Proved the theorem about list reversal.", []string{"main.go"}, 1},
+		{"formally verified", "- Formally verified the parser.", []string{"main.go"}, 1},
+		{"machine-checked", "The result is machine-checked.", []string{"main.go"}, 1},
+		{"wrote a proof", "Wrote a proof for the sorter.", []string{"main.go"}, 1},
+		{"proof of", "Added the proof of totality.", []string{"main.go"}, 1},
+		{"two claim lines", "Proved A.\nProven B.", []string{"main.go"}, 2},
+		{"lean file changed", "Proved the theorem.", []string{"Proofs/Rev.lean"}, 0},
+		{"rocq file changed", "Proved the theorem.", []string{"proofs/rev.v"}, 0},
+		{"bare verified", "Verified the tests pass.", []string{"main.go"}, 0},
+		{"proofread", "Proofread the docs.", []string{"main.go"}, 0},
+		{"bulletproof", "Made the handler bulletproof.", []string{"main.go"}, 0},
+		{"waterproof", "A waterproof design.", []string{"main.go"}, 0},
+		{"approved and improved", "Approved and improved the flow.", []string{"main.go"}, 0},
+		{"proof of concept", "Built a proof of concept.", []string{"main.go"}, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Check(Input{Claims: fileClaims(tt.text), DiffFiles: tt.files, NewTestCount: -1})
+			require.NoError(t, err)
+			n := 0
+			for _, f := range got {
+				if f.RuleID == "CLM006" {
+					n++
+				}
+			}
+			require.Equal(t, tt.want, n)
+		})
+	}
+}

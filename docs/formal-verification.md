@@ -150,4 +150,4 @@ it cannot be fooled by text tricks the static rules miss.
 ## Status
 
 - Phase 0: done (AGENTS.md and roadmap updated).
-- Phase 1: analyzer done (FV001 to FV008, spec lock file code, fixtures, rules docs); `paranoid formal lock` and `status`, and CLM006, are not built yet.
+- Phase 1: done (FV001 to FV008, CLM006, spec lock file, `paranoid formal lock`, `unlock`, and `status`, fixtures, rules docs, docs site page `formal.html`).

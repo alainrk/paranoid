@@ -38,7 +38,7 @@ type Input struct {
 	FileHasIdentifier func(file, identifier string) (bool, error)
 }
 
-// Check runs CLM001 to CLM005 on one claims text.
+// Check runs CLM001 to CLM006 on one claims text.
 func Check(in Input) ([]finding.Finding, error) {
 	extraction := Extract(in.Claims.Text)
 	var out []finding.Finding
@@ -83,6 +83,15 @@ func Check(in Input) ([]finding.Finding, error) {
 			"Count the new tests yourself before trusting the number."))
 	}
 
+	if len(extraction.ProofClaims) > 0 && !proofFileInDiff(in.DiffFiles) {
+		for _, line := range extraction.ProofClaims {
+			out = append(out, newFinding("CLM006", "", 0,
+				truncate(line),
+				fmt.Sprintf("The %s claims something was proved, but the diff touches no .lean or .v file.", in.Claims.Source),
+				"Check whether a proof was really written in this change."))
+		}
+	}
+
 	scopeFinding, err := scopeCreepFinding(in, extraction)
 	if err != nil {
 		return nil, err
@@ -93,6 +102,18 @@ func Check(in Input) ([]finding.Finding, error) {
 
 	finding.Sort(out)
 	return out, nil
+}
+
+// proofFileInDiff reports whether any changed path is a Lean or Rocq
+// file.
+func proofFileInDiff(files []string) bool {
+	for _, file := range files {
+		ext := strings.ToLower(path.Ext(file))
+		if ext == ".lean" || ext == ".v" {
+			return true
+		}
+	}
+	return false
 }
 
 // scopeCreepMinFiles is the smallest diff radius, in changed files,

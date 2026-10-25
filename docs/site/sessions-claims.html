@@ -109,6 +109,7 @@
       <a href="sandbox.html">Sandbox &amp; coverage</a>
       <a href="fix-prompt.html">fix-prompt</a>
       <a href="watch.html">watch</a>
+      <a href="formal.html">formal</a>
     </div>
     <div class="grp">
       <div class="grp-label">Trust</div>
@@ -142,7 +143,7 @@
         The commit-message fallback only triggers when a
         <code>--session</code> file is given but its format fails to
         parse. With neither flag, the claims stage does not run at
-        all, not even as a skipped check, and CLM001 to CLM005 do not
+        all, not even as a skipped check, and CLM001 to CLM006 do not
         appear in that run's findings.
       </p>
     </div>
@@ -189,6 +190,7 @@
       <tr><td>CLM003</td><td>low</td><td>A claimed action names an identifier the changed files never mention</td></tr>
       <tr><td>CLM004</td><td>medium</td><td>The agent claims N new tests; the diff contains fewer</td></tr>
       <tr><td>CLM005</td><td>low</td><td>The diff touches far more files than the claims describe</td></tr>
+      <tr><td>CLM006</td><td>medium</td><td>The agent claims a proof, but no .lean or .v file changed</td></tr>
     </table>
     <p>
       CLM005 needs a diff of at least 6 files (lockfiles and manifests
@@ -197,7 +199,11 @@
       count either way) before it looks at the ratio, and fires when
       more than 60% of those files are neither a path the claims
       mention nor a file containing an identifier the claims name.
-      Full rule text, including known false positives, is on the
+      CLM006 fires once per claim line that says something was
+      proved, proven, formally verified, or machine-checked (or that a
+      proof was written or added) when the diff touches no
+      <code>.lean</code> or <code>.v</code> file. Plain "verified" does
+      not count. Full rule text, including known false positives, is on the
       <a href="rules.html#claims">rules page</a>.
     </p>
 
