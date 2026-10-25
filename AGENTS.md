@@ -15,6 +15,11 @@ own work to be audited by this tool in CI. Do not game tests. If a test
 fails, fix the code or explain why the test is wrong. Never delete,
 skip, or weaken a test to make CI green.
 
+Formal verification is the current focus. The design, decisions, and
+phase status live in `docs/formal-verification.md`. Read it before
+working on anything under `internal/formal`, `internal/analyze/formal`,
+`internal/llm`, or the `paranoid formal` command.
+
 ## Source of truth
 
 The code is the specification. The user-facing contract is documented
@@ -58,7 +63,9 @@ severities, fixtures). Treat that contract as released and stable.
   or exit codes.
 - Any form of network call at runtime beyond the existing registry
   clients (npm, PyPI, crates.io, Go proxy) used by the dependency
-  checks.
+  checks, and the LLM provider clients in `internal/llm` used only by
+  the online `paranoid formal` subcommands (see "Offline and online"
+  below).
 - Deleting or rewriting existing tests.
 - Anything that touches release, versioning, or the GitHub Action's
   permissions.
@@ -67,6 +74,13 @@ severities, fixtures). Treat that contract as released and stable.
 
 - No telemetry, analytics, phone-home, or update checks of any kind.
   Zero network by default is a product feature.
+- Offline and online: every feature works offline by default. Online
+  features (LLM calls) run only from explicit online subcommands of
+  `paranoid formal`, with a provider key the user configured. Having a
+  key set is never enough on its own. `paranoid verify` and every
+  other offline command never call an LLM. LLM providers are called
+  with `net/http`; do not add provider SDKs to `go.mod`. Tests never
+  hit the network; they replay recorded responses.
 - No panics outside main initialization. All errors wrapped with %w
   and context. Every os/exec call uses a context with timeout.
 - CGO_ENABLED=0 must keep working on all five target platforms.
