@@ -235,6 +235,7 @@
       <tr><th>Command</th><th>Exit code</th></tr>
       <tr><td>lock, unlock</td><td>0 on success, 3 on any error</td></tr>
       <tr><td>status</td><td>0 when no locked spec is drifted or missing, 2 when one is, 3 on any error</td></tr>
+      <tr><td>providers</td><td>0, or 3 on a configuration error</td></tr>
     </table>
     <p>
       Exit 2 is the same "check failed" code that <code>verify</code>
@@ -323,13 +324,99 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       <li>Proofs made for code in other languages are about a Lean model of that code. Tests that compare the model and the code can show they agree on many inputs, not on all inputs.</li>
     </ul>
 
-    <h2>Online subcommands are coming</h2>
+    <h2 id="online">Online features and providers</h2>
     <p>
+      Some <code>paranoid formal</code> subcommands will call an LLM.
       Subcommands that write proofs for you, such as <code>fill</code>
-      and <code>prove</code>, are planned. They are not in this build.
-      They will be the only parts of paranoid that call an LLM, and
-      only when you run them with a key you set up. <code>verify</code>
-      and the commands on this page never call a model or the network.
+      and <code>prove</code>, are planned and are not in this build.
+      The base they will use is in this build: the provider clients, the
+      settings, the caps, and the request log.
+    </p>
+    <div class="card">
+      <p>
+        <strong><code>paranoid verify</code> never calls an LLM.</strong>
+        Neither does any other offline command, including every
+        command above this section. Only an explicit online
+        <code>paranoid formal</code> subcommand does, and only with a key you
+        set up. A key in your environment is not enough on its own.
+      </p>
+    </div>
+
+    <h3>paranoid formal providers</h3>
+    <pre><code>paranoid formal providers [--task proof|spec] [--provider P] [--model M] [--base-url URL]</code></pre>
+    <p>
+      Shows what an online command would use, with no network call. For
+      each task (both, or the one in <code>--task</code>) it prints the
+      provider, model, base URL, and the environment variable the key is
+      read from, with <code>(set)</code> or <code>(not set)</code>. The
+      key itself, or any part of it, is never printed.
+    </p>
+    <pre><code>task: proof
+  provider: openai
+  model:    my-local-prover
+  base url: http://localhost:11434/v1
+  key from: LOCAL_LLM_KEY (set)</code></pre>
+    <p>
+      Exit 0, or 3 on a configuration error (for example a secret in the
+      policy file, or no model for a provider that has no default).
+    </p>
+
+    <h3>Providers</h3>
+    <div class="twrap"><table class="mono">
+      <tr><th>Provider</th><th>API</th><th>Default model</th><th>Default key variable</th></tr>
+      <tr><td>anthropic</td><td>Messages API</td><td>claude-opus-5-5</td><td>ANTHROPIC_API_KEY</td></tr>
+      <tr><td>openai</td><td>Any OpenAI-compatible <code>/chat/completions</code> endpoint. Set <code>base_url</code> for a local server such as Ollama or vLLM</td><td>none, set a model</td><td>OPENAI_API_KEY</td></tr>
+      <tr><td>gemini</td><td>generateContent</td><td>none, set a model</td><td>GEMINI_API_KEY</td></tr>
+    </table></div>
+    <p>
+      The clients use <code>net/http</code> only. There are no provider
+      SDKs.
+    </p>
+
+    <h3>Keys and settings</h3>
+    <ul>
+      <li><strong>Keys come from environment variables only.</strong> There is no key field in any file. A <code>.paranoid.toml</code> entry may name a different variable with <code>api_key_env</code>, never the key itself. A field that looks like a secret (<code>api_key</code>, <code>key</code>, <code>token</code>, <code>secret</code>) is a policy error.</li>
+      <li><strong>No silent fallback.</strong> If the key variable is empty, the command stops and names the variable to set. It never tries another provider.</li>
+      <li><strong>Per task.</strong> The tasks are <code>proof</code> (proof search) and <code>spec</code> (spec drafting and Lean models). Each can use its own provider. A task falls back to <code>[formal.llm]</code>, field by field. A table that names a different provider than the one in use does not lend its model, base URL, or key variable.</li>
+      <li><strong>Flags win.</strong> <code>--provider</code>, <code>--model</code>, and <code>--base-url</code> override the file. Precedence per field: flag, task table, <code>[formal.llm]</code>, default.</li>
+    </ul>
+    <p>
+      The fields are documented on the <a href="policy.html#formal-llm">policy page</a>.
+    </p>
+
+    <h3>What gets sent</h3>
+    <p>
+      Only what the command needs for the task: the proof or spec text,
+      the declaration, and the latest checker errors. Before the first
+      call, the command prints the provider, the model, and which files'
+      content will be sent. Nothing is sent from the offline commands.
+    </p>
+
+    <h3>Caps</h3>
+    <p>Every online run has caps, on by default. The run stops cleanly at a cap and the error names it.</p>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--max-requests</td><td>100</td><td>Most provider calls in one run</td></tr>
+      <tr><td>--max-tokens</td><td>2,000,000</td><td>Most input plus output tokens in one run. Checked before each call, so the last call can go a little over</td></tr>
+      <tr><td>--timeout</td><td>60m</td><td>Stop the whole run after this long</td></tr>
+    </table>
+    <p>
+      Retries happen only on HTTP 429 and 5xx answers, at most 3 times,
+      waiting for the provider's <code>retry-after</code> when it sends one.
+      Other errors, such as a refused key, stop at once.
+    </p>
+
+    <h3>The request log</h3>
+    <p>
+      Each online run writes <code>.paranoid/formal/runs/&lt;run-id&gt;.jsonl</code>.
+      The run id is the UTC start time, like <code>20260102T030405Z</code>
+      (with <code>-2</code>, <code>-3</code> if two runs start in the same second).
+      One line per call, with: sequence number, time, provider, model,
+      input and output token counts, stop reason, the system prompt, the
+      messages, the max tokens, the full response text, and an error text
+      when the call failed. You can read exactly what left your machine.
+      API keys and auth headers are never written. The file is private
+      (mode 0600). It holds your code, so do not commit it.
     </p>
   </main>
 </div>

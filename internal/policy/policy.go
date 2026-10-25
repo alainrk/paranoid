@@ -10,6 +10,7 @@ package policy
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -39,6 +40,23 @@ type Formal struct {
 	// AllowedAxioms adds to the default allowed set when the opt-in
 	// proof re-check (verify --formal-check) audits axioms.
 	AllowedAxioms []string
+	// LLM is the [formal.llm] table: the default provider settings for
+	// every online task. Proof and Spec are the per-task tables
+	// [formal.llm.proof] and [formal.llm.spec]. Only the online
+	// `paranoid formal` subcommands read them.
+	LLM   LLM
+	Proof LLM
+	Spec  LLM
+}
+
+// LLM is one provider settings table. Every field is optional; an empty
+// field means "not set here". There is no field for a secret: keys come
+// from environment variables only, and APIKeyEnv names the variable.
+type LLM struct {
+	Provider  string
+	Model     string
+	BaseURL   string
+	APIKeyEnv string
 }
 
 // Sandbox pins the container image the sandbox stage uses per
@@ -83,6 +101,9 @@ const (
 	sectionTop section = iota
 	sectionSandbox
 	sectionFormal
+	sectionLLM
+	sectionLLMProof
+	sectionLLMSpec
 	sectionDisable
 )
 
@@ -96,6 +117,7 @@ func Parse(data []byte) (File, error) {
 	var cur *Disable
 	sawSandbox := false
 	sawFormal := false
+	var sawLLM [3]bool
 	lineNo := 0
 
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
@@ -124,6 +146,16 @@ func Parse(data []byte) (File, error) {
 				f.Disable = append(f.Disable, *cur)
 			}
 			sec, cur = sectionFormal, nil
+		case line == "[formal.llm]" || line == "[formal.llm.proof]" || line == "[formal.llm.spec]":
+			idx := map[string]int{"[formal.llm]": 0, "[formal.llm.proof]": 1, "[formal.llm.spec]": 2}[line]
+			if sawLLM[idx] {
+				return File{}, fmt.Errorf("line %d: %s given more than once", lineNo, line)
+			}
+			sawLLM[idx] = true
+			if cur != nil {
+				f.Disable = append(f.Disable, *cur)
+			}
+			sec, cur = []section{sectionLLM, sectionLLMProof, sectionLLMSpec}[idx], nil
 		case line == "[[disable]]":
 			if cur != nil {
 				f.Disable = append(f.Disable, *cur)
@@ -211,6 +243,16 @@ func assign(f *File, sec section, cur *Disable, key, val string, lineNo int) err
 			return err
 		}
 		f.Formal.AllowedAxioms = list
+	case sectionLLM, sectionLLMProof, sectionLLMSpec:
+		target := &f.Formal.LLM
+		table := "[formal.llm]"
+		switch sec {
+		case sectionLLMProof:
+			target, table = &f.Formal.Proof, "[formal.llm.proof]"
+		case sectionLLMSpec:
+			target, table = &f.Formal.Spec, "[formal.llm.spec]"
+		}
+		return assignLLM(target, table, key, val, lineNo)
 	case sectionDisable:
 		if cur == nil {
 			return fmt.Errorf("line %d: key %q outside of any [[disable]] entry", lineNo, key)
@@ -231,6 +273,84 @@ func assign(f *File, sec section, cur *Disable, key, val string, lineNo int) err
 		}
 	}
 	return nil
+}
+
+// assignLLM applies one key to an LLM table. Keys that look like
+// secrets are refused with a pointer to api_key_env.
+func assignLLM(t *LLM, table, key, val string, lineNo int) error {
+	if looksSecret(key) {
+		return fmt.Errorf("line %d: %q in %s looks like a secret. Keys never go in this file. Set the key in an environment variable and name the variable with api_key_env", lineNo, key, table)
+	}
+	switch key {
+	case "provider", "model", "base_url", "api_key_env":
+	default:
+		return fmt.Errorf("line %d: unknown key %q in %s", lineNo, key, table)
+	}
+	s, err := parseString(val, lineNo, key)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(s) == "" {
+		return fmt.Errorf("line %d: %s in %s is empty", lineNo, key, table)
+	}
+	switch key {
+	case "provider":
+		switch s {
+		case "anthropic", "openai", "gemini":
+		default:
+			return fmt.Errorf("line %d: provider in %s is %q, want anthropic, openai, or gemini", lineNo, table, s)
+		}
+		t.Provider = s
+	case "model":
+		t.Model = s
+	case "base_url":
+		u, err := url.Parse(s)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("line %d: base_url in %s must be an http or https URL", lineNo, table)
+		}
+		if u.User != nil {
+			return fmt.Errorf("line %d: base_url in %s must not contain a user name or password", lineNo, table)
+		}
+		t.BaseURL = s
+	case "api_key_env":
+		if !validEnvName(s) {
+			// The value is not echoed: it may be a pasted key.
+			return fmt.Errorf("line %d: api_key_env in %s must be the NAME of an environment variable (letters, digits, underscore), not a key", lineNo, table)
+		}
+		t.APIKeyEnv = s
+	}
+	return nil
+}
+
+// looksSecret reports whether a key name suggests a secret value.
+func looksSecret(key string) bool {
+	k := strings.ToLower(strings.NewReplacer("-", "_").Replace(key))
+	switch k {
+	case "key", "api_key", "apikey", "auth", "authorization", "bearer", "credential", "credentials":
+		return true
+	}
+	for _, w := range []string{"secret", "token", "password", "passwd"} {
+		if strings.Contains(k, w) {
+			return true
+		}
+	}
+	return strings.HasSuffix(k, "_key")
+}
+
+// validEnvName reports whether s is a plain environment variable name.
+func validEnvName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r == '_', r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z':
+		case r >= '0' && r <= '9' && i > 0:
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // splitKV splits one "key = value" line.

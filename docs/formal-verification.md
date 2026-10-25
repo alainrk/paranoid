@@ -187,6 +187,152 @@ are never allowed, whatever the policy says.
 | FV012 | high | An audited theorem has no kernel answer: Lean printed an error instead of an axioms line, or the Rocq audit line failed and was dropped. One finding per theorem, at its file and line, only when the build succeeded. Evidence is the first audit error line that mentions the theorem, when there is one. |
 | FV011 | info | The re-check was asked for but could not run: no runtime, no proof project at the root, toolchain install failed, or timeout. |
 
+## Phase 3 design: online foundation
+
+Package `internal/llm`. One small interface, three clients, all on
+`net/http`. No SDKs.
+
+```go
+type Message struct { Role string; Text string } // "user" or "assistant"
+type Request struct {
+    System    string
+    Messages  []Message
+    MaxTokens int
+}
+type Response struct {
+    Text         string
+    Model        string
+    StopReason   string
+    InputTokens  int
+    OutputTokens int
+}
+type Provider interface {
+    Name() string
+    Complete(ctx context.Context, req Request) (Response, error)
+}
+```
+
+Clients:
+
+- `anthropic`: the Messages API. Default model `claude-opus-5-5`.
+- `openai`: any OpenAI-compatible `/chat/completions` endpoint, with a
+  base URL setting (also covers local servers such as Ollama or vLLM).
+- `gemini`: the Gemini `generateContent` API.
+
+Configuration. Secrets never live in a repo file.
+
+- Keys come from environment variables only: `ANTHROPIC_API_KEY`,
+  `OPENAI_API_KEY`, `GEMINI_API_KEY` by default. A config entry may
+  name a different variable (`api_key_env`), never the key itself.
+- Non-secret settings come from `.paranoid.toml`, per task, so a user
+  can use a different provider for each kind of work:
+
+```toml
+[formal.llm]            # default for every task
+provider = "anthropic"
+model = "claude-opus-5-5"
+
+[formal.llm.proof]      # proof search (fill, prove)
+provider = "openai"
+model = "my-local-prover"
+base_url = "http://localhost:11434/v1"
+api_key_env = "LOCAL_LLM_KEY"
+
+[formal.llm.spec]       # spec drafting and Lean models (prove)
+provider = "gemini"
+model = "gemini-pro"
+```
+
+  Tasks in v1: `proof` and `spec`. A task falls back to `[formal.llm]`.
+  Flags `--provider`, `--model`, `--base-url` on online commands win
+  over the file. The policy validator rejects any key that looks like
+  a secret (`api_key`, `key`, `token`).
+
+- Online commands refuse to run without a configured key and say how
+  to set one. A key in the environment does nothing by itself.
+
+Safety rails, on by default:
+
+- Caps per run: `--max-requests` (default 100), `--max-tokens`
+  (default 2,000,000 input plus output), `--timeout` (default 60m).
+  The run stops cleanly at a cap and says which one.
+- Retries only on 429 and 5xx, at most 3, with backoff and the
+  provider's retry-after when given.
+- A local request log at `.paranoid/formal/runs/<run-id>.jsonl`: one
+  line per call with provider, model, token counts, and the full
+  request and response text. Keys and auth headers are never written.
+  The user can read exactly what left the machine.
+- Before the first call, the command prints which provider, model, and
+  files' content will be sent.
+
+Tests replay recorded responses through an `httptest` server. No test
+touches the network.
+
+## Phase 4 design: `paranoid formal fill`
+
+`paranoid formal fill [path or name...]` fills proof holes (`sorry`,
+`admit`, `Admitted`) in an existing Lean or Rocq project.
+
+Loop per hole, at most `--attempts` tries (default 5):
+
+1. Send the file, the declaration with the hole, and the latest checker
+   errors to the `proof` provider. Ask for the replacement proof body
+   only.
+2. Splice the answer into a scratch copy, in the hole's span only.
+3. Run the checker locally (`lake env lean <file>`, or
+   `rocq compile` / `coqc` with the `_CoqProject` flags), with a
+   timeout. v1 needs the toolchain installed locally; the container
+   re-check stays the final word in `verify --formal-check`.
+4. Accept only when all of these hold: the file checks; the static
+   audit (FV001, FV002, FV003, FV006) finds nothing new against the
+   original file; no declaration other than the target changed; the
+   statement hash is unchanged.
+
+Accepted proofs are written to the worktree, unless `--dry-run`, which
+prints a diff instead. Each hole ends as filled, failed (with the last
+checker error), or skipped (cap reached). Exit code 0 when every hole
+was filled, the existing "check failed" code otherwise.
+
+## Phase 5 design: `paranoid formal prove`
+
+`paranoid formal prove <file>:<symbol>...` builds proofs for hotspots
+in Go, Python, or TS code. Two steps, with a human in between.
+
+Step 1, draft (`prove`):
+
+1. Extract the function source. Go uses go/ast (exact). Python and TS
+   use the existing heuristics; the command prints the extracted span
+   so the user can check the boundaries.
+2. v1 accepts only pure functions on plain data: integers, booleans,
+   strings, and lists or arrays of those. Anything else is refused
+   with a clear reason.
+3. The `spec` provider writes a Lean model of the function and two to
+   five candidate theorems, each with a plain-English line, into
+   `Formal/Paranoid/<Hotspot>.lean` (proofs left as `sorry`).
+4. The command prints the candidate specs and stops. A human reads
+   them, edits if needed, and approves with `paranoid formal lock`.
+   Locking records the hotspot's source path as the spec's `code`, so
+   FV008 guards it.
+
+Step 2, prove (`prove --continue`): run the Phase 4 fill loop on the
+locked theorems, then the differential test.
+
+Differential test (no LLM involved):
+
+- paranoid itself generates both harnesses from the function's
+  signature, from fixed templates: a Lean `main` that reads JSON inputs
+  and prints the model's JSON outputs, and a Go, Python, or Node
+  harness that calls the real function the same way. The LLM writes
+  neither harness, so it cannot make them agree by cheating.
+- Inputs: N cases (default 1,000, `--cases`) from a seeded generator
+  (`--seed`, default fixed), with edge values (0, -1, max, empty,
+  unicode) first.
+- Any mismatch fails the run and prints the first few inputs that
+  differ.
+
+Report wording, always: "Proved on the Lean model. The model matches
+the code on N generated inputs." Never "the code is proven".
+
 ## Trust boundary, stated plainly
 
 - Static rules (Phase 1) read text. A determined agent can hide a hole
@@ -203,3 +349,4 @@ are never allowed, whatever the policy says.
 - Phase 0: done (AGENTS.md and roadmap updated).
 - Phase 1: done (FV001 to FV008, CLM006, spec lock file, `paranoid formal lock`, `unlock`, and `status`, fixtures, rules docs, docs site page `formal.html`).
 - Phase 2: done (`verify --formal-check`, `--formal-image`, `--formal-timeout`, FV009 to FV012, `[formal] allowed_axioms` in the policy file, `make formal-live` for the real-container tests). Not run for real: Mathlib projects.
+- Phase 3: done (`internal/llm` with anthropic, openai, and gemini clients on `net/http`, retries, run caps, request log under `.paranoid/formal/runs/`, `[formal.llm]` policy tables, `paranoid formal providers`). Not run against the real provider APIs: tests replay recorded-style JSON.
