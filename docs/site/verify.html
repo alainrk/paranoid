@@ -144,6 +144,33 @@
       <li><strong>Safety controls.</strong> Every changed file in the diff, not just source: TLS verification disabled, auth removed, a tracked path hidden by .gitignore, hook config changed, CI permissions widened.</li>
       <li><strong>Baseline suppression.</strong> Findings matching an unexpired entry in <code>.paranoid-baseline.json</code> move to a suppressed section and out of the score. See <a href="baseline.html">Baseline &amp; suppressions</a>.</li>
     </ol>
+    <h2 id="proofs">The Proofs block</h2>
+    <p>
+      When the formal-verification check ran (the diff touched a proof,
+      build, or lock file, or <code>--formal-check</code> was used),
+      the report gains a <strong>Proofs</strong> block. When it did not
+      run, the block is absent and the report is unchanged. It is a
+      summary only. It never changes the score, and passing proofs do
+      not raise it. It has four lines:
+    </p>
+    <ul>
+      <li><strong>Proof files changed.</strong> The changed <code>.lean</code> and <code>.v</code> files, sorted.</li>
+      <li><strong>Holes and escapes.</strong> Counts at head, in those changed files only.</li>
+      <li><strong>Locked specs.</strong> Total, ok, drifted, and missing at head, the same logic as <code>paranoid formal status</code>.</li>
+      <li><strong>Re-check.</strong> "not run" with the reason, or "ran" with whether the build was ok, how many theorems were audited, how many use a disallowed axiom, and how many got no kernel answer. See <a href="formal.html#recheck">the clean-room re-check</a>.</li>
+    </ul>
+<pre><code>proofs:
+  proof files changed: Demo.lean
+  holes: 1, axioms or escapes: 1 (at head, in changed proof files)
+  locked specs: 1 total, 0 ok, 1 drifted, 0 missing
+  re-check: not run (not requested)</code></pre>
+    <p>
+      Text, markdown, and JSON show it. In JSON it is the optional
+      <code>proofs</code> object (schema version 9), and in SARIF it is
+      in <code>runs[0].properties</code>. See
+      <a href="report-schema.html">the report schema</a>.
+    </p>
+
     <p>
       Unless <code>--no-policy</code> is set, a <code>.paranoid.toml</code>
       at the repo root feeds three of the steps above: a

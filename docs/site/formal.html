@@ -229,6 +229,24 @@
       <li><strong>Proof files.</strong> Each tracked <code>.lean</code> or <code>.v</code> file that has holes or axioms and escapes, with counts, for example <code>Proofs/Rev.lean: 1 hole, 1 axiom or escape</code>. <code>none</code> when all are clean.</li>
     </ul>
     <p>A last line gives the totals. Only tracked files are read, and each is read once.</p>
+    <p>
+      <code>paranoid verify</code> shows the same numbers, taken at
+      head, in its <a href="verify.html#proofs">Proofs block</a>.
+    </p>
+
+    <h2 id="demo">Try it: the demo</h2>
+    <p>
+      <code>hack/demo/formal.sh</code> builds a throwaway Lean project
+      with one honest theorem and one locked spec. It then plays a
+      cheating agent: it adds <code>sorry</code> and an
+      <code>axiom</code>, weakens the locked theorem, and turns on a
+      soundness switch. It runs <code>paranoid formal status</code> and
+      <code>paranoid verify</code> so you see FV001, FV002, FV004,
+      FV006, and the Proofs block. It needs no Lean install, no
+      container, and no network, and it deletes its temp directory when
+      it ends. From the repository root:
+    </p>
+    <pre><code>sh hack/demo/formal.sh</code></pre>
 
     <h2>Exit codes</h2>
     <table>

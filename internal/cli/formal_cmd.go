@@ -108,7 +108,13 @@ func writeLockFile(root string, lock fparse.Lock) error {
 // in the worktree, in path order. A tracked file that was deleted from
 // the worktree is skipped. Each file is read once.
 func scanProofFiles(ctx context.Context, repo *gitx.Repo, visit func(path string, lang fparse.Lang, src []byte) error) error {
-	tracked, err := repo.TrackedFiles(ctx, "")
+	return scanProofFilesAt(ctx, repo, "", visit)
+}
+
+// scanProofFilesAt is scanProofFiles for a git ref. An empty ref means
+// the worktree.
+func scanProofFilesAt(ctx context.Context, repo *gitx.Repo, ref string, visit func(path string, lang fparse.Lang, src []byte) error) error {
+	tracked, err := repo.TrackedFiles(ctx, ref)
 	if err != nil {
 		return err
 	}
@@ -117,7 +123,7 @@ func scanProofFiles(ctx context.Context, repo *gitx.Repo, visit func(path string
 		if lang == fparse.LangNone {
 			continue
 		}
-		src, err := repo.FileAtRef(ctx, "", p)
+		src, err := repo.FileAtRef(ctx, ref, p)
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -345,31 +351,14 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-// runFormalStatus implements `paranoid formal status`.
-func runFormalStatus(ctx context.Context, out io.Writer) error {
-	repo, err := openFormalRepo(ctx)
-	if err != nil {
-		return err
-	}
-	lock, err := readLockFile(repo.Root())
-	if err != nil {
-		return err
-	}
-	specs := append([]fparse.Spec{}, lock.Specs...)
-	sort.SliceStable(specs, func(i, j int) bool {
-		if specs[i].Name != specs[j].Name {
-			return specs[i].Name < specs[j].Name
-		}
-		return specs[i].File < specs[j].File
-	})
-	specFiles := map[string]bool{}
-	for _, s := range specs {
-		specFiles[s.File] = true
-	}
-
-	hashes := map[string]map[string]string{} // file -> name -> statement hash
+// scanProofState scans the proof files at a ref (empty means the
+// worktree). It returns the statement hashes of every declaration in
+// the files named in specFiles (file -> name -> hash), and the hole and
+// escape counts of every file that has any, in path order.
+func scanProofState(ctx context.Context, repo *gitx.Repo, ref string, specFiles map[string]bool) (map[string]map[string]string, []proofCounts, error) {
+	hashes := map[string]map[string]string{}
 	var counts []proofCounts
-	err = scanProofFiles(ctx, repo, func(p string, lang fparse.Lang, src []byte) error {
+	err := scanProofFilesAt(ctx, repo, ref, func(p string, lang fparse.Lang, src []byte) error {
 		if specFiles[p] {
 			byName := map[string]string{}
 			for _, d := range fparse.Decls(lang, src) {
@@ -385,16 +374,20 @@ func runFormalStatus(ctx context.Context, out io.Writer) error {
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
+	return hashes, counts, err
+}
 
-	var ok, drifted, missing int
-	var b strings.Builder
-	b.WriteString("Locked specs\n")
-	if len(specs) == 0 {
-		b.WriteString("  none\n")
-	}
+// specResult is one locked spec with its state: specOK, specDrifted, or
+// specMissing.
+type specResult struct {
+	spec  fparse.Spec
+	state string
+}
+
+// classifySpecs compares each locked spec with the statement hashes
+// found in the proof files (file -> name -> hash) and counts the
+// states. The results keep the order of specs.
+func classifySpecs(specs []fparse.Spec, hashes map[string]map[string]string) (results []specResult, ok, drifted, missing int) {
 	for _, s := range specs {
 		state := specMissing
 		if h, found := hashes[s.File][s.Name]; found {
@@ -411,7 +404,52 @@ func runFormalStatus(ctx context.Context, out io.Writer) error {
 		default:
 			missing++
 		}
-		fmt.Fprintf(&b, "  %-8s %s (%s)\n", state, s.Name, s.File)
+		results = append(results, specResult{spec: s, state: state})
+	}
+	return results, ok, drifted, missing
+}
+
+// sortedSpecs returns a copy of the specs sorted by name, then file.
+func sortedSpecs(in []fparse.Spec) []fparse.Spec {
+	specs := append([]fparse.Spec{}, in...)
+	sort.SliceStable(specs, func(i, j int) bool {
+		if specs[i].Name != specs[j].Name {
+			return specs[i].Name < specs[j].Name
+		}
+		return specs[i].File < specs[j].File
+	})
+	return specs
+}
+
+// runFormalStatus implements `paranoid formal status`.
+func runFormalStatus(ctx context.Context, out io.Writer) error {
+	repo, err := openFormalRepo(ctx)
+	if err != nil {
+		return err
+	}
+	lock, err := readLockFile(repo.Root())
+	if err != nil {
+		return err
+	}
+	specs := sortedSpecs(lock.Specs)
+	specFiles := map[string]bool{}
+	for _, s := range specs {
+		specFiles[s.File] = true
+	}
+
+	hashes, counts, err := scanProofState(ctx, repo, "", specFiles)
+	if err != nil {
+		return err
+	}
+
+	results, ok, drifted, missing := classifySpecs(specs, hashes)
+	var b strings.Builder
+	b.WriteString("Locked specs\n")
+	if len(specs) == 0 {
+		b.WriteString("  none\n")
+	}
+	for _, r := range results {
+		fmt.Fprintf(&b, "  %-8s %s (%s)\n", r.state, r.spec.Name, r.spec.File)
 	}
 	b.WriteString("\nProof files\n")
 	if len(counts) == 0 {

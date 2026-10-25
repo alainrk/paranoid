@@ -228,10 +228,7 @@ func TestLiveRocqModuleAndSection(t *testing.T) {
 	res := liveVerify(t, base, head)
 	require.Contains(t, res.ChecksRun, checkFormalRecheck, "skipped: %+v findings: %+v", res.ChecksSkipped, res.Findings)
 	require.Zero(t, ruleCount(res, "FV012"), "%+v", res.Findings)
-	var ev []string
-	for _, f := range axiomEvidence(res) {
-		ev = append(ev, f)
-	}
+	ev := append([]string(nil), axiomEvidence(res)...)
 	require.Len(t, ev, 1, "%v", ev)
 	require.Contains(t, ev[0], "M.push_pop depends on axiom")
 }

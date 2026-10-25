@@ -276,3 +276,44 @@ func TestFormalRecheckFindsProjectInFormalFolder(t *testing.T) {
 	require.Contains(t, check, "cd /work/formal")
 	require.Contains(t, check, "lake build Formal.Paranoid.UtilAdd")
 }
+
+func TestProofsRecheckSummary(t *testing.T) {
+	head := map[string]string{"Proofs/A.lean": "theorem a : True := trivial\ntheorem b : 1 = 2 := by exact sorryAx _\n"}
+	tests := []struct {
+		name   string
+		output string
+		want   finding.ProofsRecheck
+	}{
+		{
+			name:   "disallowed axiom",
+			output: "PARANOID-BUILD-OK\nPARANOID-AUDIT\n'a' depends on axioms: [propext]\n'b' depends on axioms: [sorryAx]\n",
+			want:   finding.ProofsRecheck{Ran: true, BuildOK: true, Audited: 2, DisallowedAxioms: 1},
+		},
+		{
+			name:   "no kernel answer",
+			output: "PARANOID-BUILD-OK\nPARANOID-AUDIT\n'a' does not depend on any axioms\naudit.lean:3:14: error: unknown constant 'b'\n",
+			want:   finding.ProofsRecheck{Ran: true, BuildOK: true, Audited: 1, NoAnswer: 1},
+		},
+		{
+			name:   "build failure",
+			output: "PARANOID-BUILD-FAILED\nerror: boom\n",
+			want:   finding.ProofsRecheck{Ran: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rt := &fakeProofRuntime{checkOutput: tt.output}
+			res := formalRecheckRun(t, rt, "auto", leanProject, head)
+			require.NotNil(t, res.Proofs)
+			require.Equal(t, tt.want, res.Proofs.Recheck)
+		})
+	}
+
+	t.Run("could not run", func(t *testing.T) {
+		rt := &fakeProofRuntime{prepCode: 22, prepOutput: "curl: (22) 404\n"}
+		res := formalRecheckRun(t, rt, "auto", leanProject, head)
+		require.NotNil(t, res.Proofs)
+		require.False(t, res.Proofs.Recheck.Ran)
+		require.NotEmpty(t, res.Proofs.Recheck.Reason)
+	})
+}

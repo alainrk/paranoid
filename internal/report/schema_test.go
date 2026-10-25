@@ -243,8 +243,8 @@ func TestSchemaValidatorCatchesViolations(t *testing.T) {
 		},
 		{
 			name:    "wrong schema version",
-			mutate:  func(doc map[string]any) { doc["schema_version"] = float64(9) },
-			message: "want const 8",
+			mutate:  func(doc map[string]any) { doc["schema_version"] = float64(10) },
+			message: "want const 9",
 		},
 		{
 			name:    "extra top-level field",

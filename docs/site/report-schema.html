@@ -152,13 +152,13 @@
       A test in the repository checks every rendered report against
       this file; it accepts nothing the schema does not describe
       (<code>additionalProperties: false</code> everywhere). The
-      current version is <code>7</code>. Whenever a change adds a
+      current version is <code>9</code>. Whenever a change adds a
       field, a category, or a report section, this number goes up; a
       field never changes shape under the same number.
     </p>
     <table class="mono">
       <tr><th>Top-level field</th><th>Type</th><th>Meaning</th></tr>
-      <tr><td>schema_version</td><td>integer</td><td>Always 8 today</td></tr>
+      <tr><td>schema_version</td><td>integer</td><td>Always 9 today</td></tr>
       <tr><td>score</td><td>integer 0-100</td><td>The trust score</td></tr>
       <tr><td>verdict</td><td>"pass" | "warn" | "fail"</td><td>Derived from the score</td></tr>
       <tr><td>findings</td><td>array of finding</td><td>Everything that fired, minus baseline and policy suppressions</td></tr>
@@ -166,6 +166,7 @@
       <tr><td>checks_skipped</td><td>array of {name, reason}</td><td>Checks that could not run, and why</td></tr>
       <tr><td>coverage</td><td>object</td><td>Total test coverage, best-effort; see Sandbox &amp; coverage</td></tr>
       <tr><td>suppressed</td><td>object {count, entries}</td><td>Findings a baseline entry or a policy [[disable]] entry matched, see Baseline &amp; suppressions and Team policy file</td></tr>
+      <tr><td>proofs</td><td>object, optional</td><td>Formal-verification summary (schema version 9). Present only when the formal-verification check ran; absent otherwise. Never changes the score. See the Proofs table below</td></tr>
       <tr><td>meta</td><td>object</td><td>repo, base, head, tool version, generated_at</td></tr>
     </table>
     <p>Each item in <code>findings</code>:</p>
@@ -198,8 +199,17 @@
       <tr><td>expired</td><td>boolean</td></tr>
       <tr><td>source</td><td>"baseline" | "policy" (schema version 7)</td></tr>
     </table>
+    <p>Each field of <code>proofs</code> (when present):</p>
+    <table class="mono">
+      <tr><th>Field</th><th>Type</th></tr>
+      <tr><td>files_changed</td><td>array of string, the changed proof files, sorted</td></tr>
+      <tr><td>holes</td><td>integer, proof holes at head in the changed proof files</td></tr>
+      <tr><td>escapes</td><td>integer, axioms and escapes at head in the changed proof files</td></tr>
+      <tr><td>locked</td><td>object {total, ok, drifted, missing}, the locked specs at head</td></tr>
+      <tr><td>recheck</td><td>object {ran, reason, build_ok, audited, disallowed_axioms, no_answer}; <code>reason</code> is left out when empty; the counts are 0 when the re-check did not run</td></tr>
+    </table>
     <pre><code>{
-  "schema_version": 8,
+  "schema_version": 9,
   "score": 40,
   "verdict": "fail",
   "findings": [
@@ -222,6 +232,9 @@
      "message": "A retry was added to an existing test.", "reason": "flaky under load, tracked in issue #142",
      "expires": "2026-12-01", "expired": false, "source": "policy"}
   ]},
+  "proofs": {"files_changed": ["Proofs/Sort.lean"], "holes": 1, "escapes": 0,
+    "locked": {"total": 2, "ok": 1, "drifted": 1, "missing": 0},
+    "recheck": {"ran": false, "reason": "not requested", "build_ok": false, "audited": 0, "disallowed_axioms": 0, "no_answer": 0}},
   "meta": {"repo": "/home/you/project", "base": "7db5cfb", "head": "worktree", "version": "v0.1.0", "generated_at": "2026-08-26T12:00:00Z"}
 }</code></pre>
 
@@ -247,8 +260,10 @@
       mapped to a SARIF level. Score, verdict, checks run, checks
       skipped, and the suppressed block all ride along in
       <code>runs[0].properties</code>, since SARIF has no first-class
-      concept that matches paranoid's own report shape. Coverage is
-      not included in SARIF properties.
+      concept that matches paranoid's own report shape. The
+      <code>proofs</code> block rides along there too, and only when
+      the formal-verification check ran. Coverage is not included in
+      SARIF properties.
     </p>
     <p>
       SARIF is versioned by the SARIF spec itself, not by
