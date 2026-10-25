@@ -66,7 +66,11 @@ type LogicalDir struct {
 // ProofProject is a detected proof project at the root of an exported
 // tree.
 type ProofProject struct {
-	Kind      string // KindLean or KindRocq
+	Kind string // KindLean or KindRocq
+	// Dir is the slash path of the project folder relative to the repo
+	// root. It is empty for a project at the root and "formal" for a
+	// Lean project in the formal/ folder.
+	Dir       string
 	Image     string
 	Toolchain string // Lean: the lean-toolchain value
 	Mathlib   bool   // Lean: the project depends on Mathlib
@@ -122,10 +126,26 @@ var logicalRe = regexp.MustCompile(`^[A-Za-z0-9_.']*$`)
 // srcDirRe finds srcDir settings in a Lake file.
 var srcDirRe = regexp.MustCompile(`srcDir\s*(?::=|=)\s*"([^"]+)"`)
 
-// DetectProof inspects an exported tree for a proof project at its
-// root. When there is none it returns false and the reason.
+// FormalDir is the folder `paranoid formal prove` creates for a Lean
+// project when the repo root has none. DetectProof looks there second.
+const FormalDir = "formal"
+
+// IsLakeProject reports whether dir holds a Lake project: a
+// lean-toolchain file and a lakefile.
+func IsLakeProject(dir string) bool {
+	return fileExists(dir, "lean-toolchain") && (fileExists(dir, "lakefile.lean") || fileExists(dir, "lakefile.toml"))
+}
+
+// IsLakeFileIn reports whether dir has a lakefile.toml or lakefile.lean.
+func IsLakeFileIn(dir string) bool {
+	return fileExists(dir, "lakefile.lean") || fileExists(dir, "lakefile.toml")
+}
+
+// DetectProof inspects an exported tree for a proof project. A project
+// at the root wins. A Lean project in the formal/ folder is found when
+// the root has none. When there is none it returns false and the reason.
 func DetectProof(dir string) (ProofProject, string, bool) {
-	if fileExists(dir, "lean-toolchain") && (fileExists(dir, "lakefile.lean") || fileExists(dir, "lakefile.toml")) {
+	if IsLakeProject(dir) {
 		return detectLean(dir)
 	}
 	if fileExists(dir, "_CoqProject") {
@@ -137,7 +157,12 @@ func DetectProof(dir string) (ProofProject, string, bool) {
 			return detectRocq(dir, true)
 		}
 	}
-	return ProofProject{}, "no proof project at the repo root (need lean-toolchain with a lakefile, a _CoqProject, or a dune-project with a Coq stanza)", false
+	if sub := filepath.Join(dir, FormalDir); IsLakeProject(sub) {
+		p, reason, ok := detectLean(sub)
+		p.Dir = FormalDir
+		return p, reason, ok
+	}
+	return ProofProject{}, "no proof project at the repo root or in formal/ (need lean-toolchain with a lakefile, a _CoqProject, or a dune-project with a Coq stanza)", false
 }
 
 // readSmall reads a file under dir, returning "" on any error.
@@ -255,6 +280,13 @@ func (p ProofProject) LeanModule(file string) (string, bool) {
 	file = strings.TrimPrefix(path.Clean(strings.ReplaceAll(file, `\`, "/")), "./")
 	if !strings.HasSuffix(file, ".lean") {
 		return "", false
+	}
+	if p.Dir != "" {
+		rest, ok := strings.CutPrefix(file, p.Dir+"/")
+		if !ok {
+			return "", false
+		}
+		file = rest
 	}
 	for _, d := range p.SrcDirs {
 		if strings.HasPrefix(file, d+"/") {
@@ -393,7 +425,7 @@ func (p ProofProject) leanPlan(targets []AuditTarget) Plan {
 	}
 	src.WriteString(body.String())
 	plan.AuditSource = src.String()
-	plan.Check = leanCheckScript(mods)
+	plan.Check = leanCheckScript(p, mods)
 	return plan
 }
 
@@ -507,8 +539,9 @@ cat > /work/.paranoid/bin/git <<'WRAP'
 LD_LIBRARY_PATH=/work/.paranoid/git/lib exec /work/.paranoid/git/git "$@"
 WRAP
 chmod +x /work/.paranoid/bin/git
-lake resolve-deps
 `)
+	b.WriteString(p.cdWork())
+	b.WriteString("lake resolve-deps\n")
 	if p.Mathlib {
 		b.WriteString("lake exe cache get || echo 'paranoid: lake exe cache get failed, the build will compile Mathlib'\n")
 	}
@@ -516,14 +549,24 @@ lake resolve-deps
 	return b.String()
 }
 
+// cdWork returns the script line that enters the project folder. A
+// project at the repo root stays in /work, as it always did. A folder
+// name that is not plain is dropped, because it reaches a shell script.
+func (p ProofProject) cdWork() string {
+	if p.Dir == "" || !safePathRe.MatchString(p.Dir) || strings.Contains(p.Dir, "..") {
+		return "cd /work\n"
+	}
+	return "cd /work/" + p.Dir + "\n"
+}
+
 // leanCheckScript is the network-off step for a Lean project: build,
 // then ask the kernel for axioms. After a successful "lake build" it
 // also builds the modules of audited files, which are not always part
 // of a default target; that extra build is best effort.
-func leanCheckScript(mods []string) string {
+func leanCheckScript(p ProofProject, mods []string) string {
 	var b strings.Builder
-	b.WriteString(`cd /work
-export ELAN_HOME=/work/.paranoid/elan
+	b.WriteString(p.cdWork())
+	b.WriteString(`export ELAN_HOME=/work/.paranoid/elan
 export XDG_CACHE_HOME=/work/.paranoid/cache
 export PATH="/work/.paranoid/bin:$ELAN_HOME/bin:$PATH"
 if lake build > /work/.paranoid/build.log 2>&1; then
@@ -538,7 +581,12 @@ fi
 		b.WriteString("lake build " + strings.Join(mods, " ") + " >/dev/null 2>&1 || true\n")
 	}
 	b.WriteString("echo " + markAudit + "\n")
-	b.WriteString("lake env lean " + leanAuditFile + " 2>&1 || true\n")
+	if p.Dir != "" {
+		// The audit file sits at the tree root, above the project folder.
+		b.WriteString("lake env lean /work/" + leanAuditFile + " 2>&1 || true\n")
+	} else {
+		b.WriteString("lake env lean " + leanAuditFile + " 2>&1 || true\n")
+	}
 	return b.String()
 }
 

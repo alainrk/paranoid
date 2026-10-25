@@ -302,20 +302,52 @@ Step 1, draft (`prove`):
 
 1. Extract the function source. Go uses go/ast (exact). Python and TS
    use the existing heuristics; the command prints the extracted span
-   so the user can check the boundaries.
+   (path, line range, signature) so the user can check the boundaries.
 2. v1 accepts only pure functions on plain data: integers, booleans,
    strings, and lists or arrays of those. Anything else is refused
    with a clear reason.
-3. The `spec` provider writes a Lean model of the function and two to
-   five candidate theorems, each with a plain-English line, into
-   `Formal/Paranoid/<Hotspot>.lean` (proofs left as `sorry`).
-4. The command prints the candidate specs and stops. A human reads
-   them, edits if needed, and approves with `paranoid formal lock`.
-   Locking records the hotspot's source path as the spec's `code`, so
-   FV008 guards it.
+3. Use the Lean project at the repo root if there is one. Otherwise
+   create `formal/` with a `lakefile.toml` (a `lean_lib` named
+   `Formal`) and a `lean-toolchain`. `DetectProof` finds a Lean project
+   in `formal/` when the root has none, so `verify --formal-check` and
+   `formal fill` work with it.
+4. The `spec` provider writes one Lean file: the namespace, a `def
+   model` with exactly the derived signature, and two to five
+   candidate theorems, each with a one-sentence doc comment and a proof
+   of `sorry`. The file is checked before anything is built (see
+   "Draft validation" below), then written to
+   `Formal/Paranoid/<Hotspot>.lean`.
+5. `lake build` builds the module, and the differential test runs
+   right away. On a build error or a mismatch, the errors or the first
+   differing inputs go back to the model, up to `--attempts`. The model
+   must match the code before a person reviews anything.
+6. The command prints the candidate specs (name, English line, Lean
+   statement) and the next steps, then stops. A human reads them, edits
+   if needed, and approves with `paranoid formal lock`. Locking records
+   the hotspot's source path as the spec's `code`, so FV008 guards it.
 
-Step 2, prove (`prove --continue`): run the Phase 4 fill loop on the
-locked theorems, then the differential test.
+Draft validation (strict, before the build): the answer is one fenced
+block; it parses; the namespace is the hotspot identifier and nothing
+but `import` lines sits outside it; `def model` appears once, before
+every theorem, with the derived signature (after whitespace is
+normalized); the model and any helper before the first theorem have no
+hole; there are two to five theorems, each stated with `theorem`,
+each mentioning `model`, each with a doc comment and a proof that is
+exactly `by sorry`; FV002 and FV006 marks find nothing; and macros,
+notation, `set_option`, attributes, `#` commands, `partial`, `opaque`,
+and `noncomputable` are refused.
+
+Step 2, prove (`prove --continue`):
+
+1. Take the locked specs whose `file` is the hotspot's model file and
+   whose `code` is the hotspot's source file. With none, refuse. A
+   locked statement that changed since the lock, or a model file that
+   no longer has the derived signature, stops the run too.
+2. Run the Phase 4 fill loop (task `proof`) on those theorems, with the
+   full fill gate. Unlocked theorems are never sent.
+3. Run the kernel axiom audit on every locked theorem in the final
+   file, so a proof that was already there is held to the same gate.
+4. Rebuild the module and run the differential test again.
 
 Differential test (no LLM involved):
 
@@ -330,8 +362,27 @@ Differential test (no LLM involved):
 - Any mismatch fails the run and prints the first few inputs that
   differ.
 
+Exit codes of `prove`: 0 for a matching draft (or a full proof), 2 when
+no matching model was found within the attempts or something is not
+proved, 3 on errors (including a refused hotspot).
+
 Report wording, always: "Proved on the Lean model. The model matches
 the code on N generated inputs." Never "the code is proven".
+
+What changed from the first design, found while building and running
+it (Phase 5b):
+
+- The design said the differential test comes in step 2. It now runs in
+  step 1 too, inside the retry loop, so a person never reviews a model
+  that already disagrees with the code. Step 2 runs it again.
+- `formal lock` and `formal fill` read tracked files only, so the draft
+  output tells the user to `git add` the model file before locking.
+- A draft that never matched is removed, not left on disk.
+- The audit in step 2 covers every locked theorem, not only the ones
+  just filled.
+- A Lake project in `formal/` needed new project detection (the
+  `Dir` field of `ProofProject`), and the clean-room scripts now `cd`
+  into that folder.
 
 ## Trust boundary, stated plainly
 
@@ -351,4 +402,5 @@ the code on N generated inputs." Never "the code is proven".
 - Phase 2: done (`verify --formal-check`, `--formal-image`, `--formal-timeout`, FV009 to FV012, `[formal] allowed_axioms` in the policy file, `make formal-live` for the real-container tests). Not run for real: Mathlib projects.
 - Phase 3: done (`internal/llm` with anthropic, openai, and gemini clients on `net/http`, retries, run caps, request log under `.paranoid/formal/runs/`, `[formal.llm]` policy tables, `paranoid formal providers`). Not run against the real provider APIs: tests replay recorded-style JSON.
 - Phase 4: done (`paranoid formal fill`, package `internal/fill`, parser proof spans on `formal.Decl`). Tested with a fake provider and a fake checker only: not run against a real Lean or Rocq toolchain or a real provider. The kernel audit is appended to the scratch file and run as a second checker call, instead of a separate audit file. Not built: a docker checker, so v1 needs the toolchain installed locally.
-- Phase 5a: done (offline half of `formal prove`). `internal/hotspot` reads a `<file>:<symbol>` hotspot (Go with go/ast; Python and TS with line-based heuristics), maps its types into the closed set, and gives the Lean identifier and exact signature. `internal/difftest` has the seeded input generator, the harness templates for Go, Python, TS, and Lean, and the comparison. Run for real: the Go, Python, and Node harnesses, and the Lean harness in a container with a correct and a wrong hand-written model (`make formal-live`). Lean checked: Int8 to Int64 and UInt8 to UInt64 exist in core, `Lean.Json` parse, `getInt?`, and `compress`, run with `lake env lean --run`, on toolchain v4.24.0. Not built: the `prove` command, the LLM step, and the report wiring. Not covered: methods, generics, floats, byte slices, and functions that panic on purpose.
+- Phase 5a: done (offline half of `formal prove`). `internal/hotspot` reads a `<file>:<symbol>` hotspot (Go with go/ast; Python and TS with line-based heuristics), maps its types into the closed set, and gives the Lean identifier and exact signature. `internal/difftest` has the seeded input generator, the harness templates for Go, Python, TS, and Lean, and the comparison. Run for real: the Go, Python, and Node harnesses, and the Lean harness in a container with a correct and a wrong hand-written model (`make formal-live`). Lean checked: Int8 to Int64 and UInt8 to UInt64 exist in core, `Lean.Json` parse, `getInt?`, and `compress`, run with `lake env lean --run`, on toolchain v4.24.0. Not covered: methods, generics, floats, byte slices, and functions that panic on purpose.
+- Phase 5b: done (`paranoid formal prove`, package `internal/prove`). Draft and `--continue` modes, the draft validation, the retry loop with differential feedback, `formal/` project creation and detection (root first), and the audit of every locked theorem. Unit tests use a scripted provider and a fake runner. Run for real by `make formal-live` (`TestLiveProve*`): a container with Lean v4.24.0 and Go, a fake OpenAI-compatible server, and a small Go function (`Not` on a boolean). The run covered a wrong first model that the differential test caught, a retry, lock, a wrong first proof that the checker rejected, the fill, the audit, the rebuild, and the final "Proved on the Lean model" line. Not run against a real provider API, and not run on a real Mathlib project. Only a small boolean function was proved for real: integer models (Int64 wrapping proofs) are covered by the differential test live tests but not by a real proof run. Lean 4.24 or newer is needed for the Int8 to Int64 types.

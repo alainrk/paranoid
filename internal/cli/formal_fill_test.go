@@ -344,3 +344,34 @@ func TestFormalFillRocq(t *testing.T) {
 	require.Equal(t, 0, code, out)
 	require.Equal(t, "Lemma a : True.\nProof.\n  exact I.\nQed.\n", readRepoFile(t, dir, "A.v"))
 }
+
+func TestFormalFillWorksInFormalFolder(t *testing.T) {
+	dir := formalTestRepo(t, map[string]string{
+		"formal/lean-toolchain":               "leanprover/lean4:v4.24.0\n",
+		"formal/lakefile.toml":                fillLakefile,
+		"formal/Formal/Paranoid/UtilAdd.lean": "namespace Paranoid.UtilAdd\n\ntheorem t (n : Nat) : n = n := by\n  sorry\n\nend Paranoid.UtilAdd\n",
+	})
+	var gotProject sandbox.ProofProject
+	var gotRoot string
+	old := newFillDeps
+	t.Cleanup(func() { newFillDeps = old })
+	newFillDeps = func() fillDeps {
+		return fillDeps{
+			getenv: func(k string) string { return fillKey[k] },
+			newProvider: func(llm.Settings, string) (llm.Provider, error) {
+				return &fillProvider{replies: []string{fenced("by\n  rfl")}}, nil
+			},
+			newChecker: func(p sandbox.ProofProject, root string) fill.Checker {
+				gotProject, gotRoot = p, root
+				return &fillChecker{}
+			},
+			now: time.Now,
+		}
+	}
+	out, code := runFormal(t, "formal", "fill")
+	require.Equal(t, 0, code, out)
+	require.Contains(t, out, "filled   Paranoid.UtilAdd.t (formal/Formal/Paranoid/UtilAdd.lean:3, 1 hole)")
+	require.Equal(t, "formal", gotProject.Dir)
+	require.NotEmpty(t, gotRoot)
+	require.Contains(t, readRepoFile(t, dir, "formal/Formal/Paranoid/UtilAdd.lean"), "n = n := by\n  rfl")
+}

@@ -248,3 +248,31 @@ func TestSelectAuditTargets(t *testing.T) {
 	targets, _ = selectAuditTargets(dir, sandbox.KindLean, nil)
 	require.Empty(t, targets)
 }
+
+// formalFolderProject is a Lean project in the formal/ folder, with the
+// repo root holding no proof project.
+var formalFolderProject = map[string]string{
+	"formal/lean-toolchain":               "leanprover/lean4:v4.24.0\n",
+	"formal/lakefile.toml":                "name = \"f\"\n",
+	"formal/Formal/Paranoid/UtilAdd.lean": "namespace Paranoid.UtilAdd\n\ntheorem t : True := trivial\n\nend Paranoid.UtilAdd\n",
+}
+
+func TestFormalRecheckFindsProjectInFormalFolder(t *testing.T) {
+	head := map[string]string{
+		"formal/Formal/Paranoid/UtilAdd.lean": "namespace Paranoid.UtilAdd\n\ntheorem t : True := trivial\n\ntheorem u : 1 = 2 := by exact sorryAx _\n\nend Paranoid.UtilAdd\n",
+	}
+	rt := &fakeProofRuntime{checkOutput: "PARANOID-BUILD-OK\nPARANOID-AUDIT\n'Paranoid.UtilAdd.t' does not depend on any axioms\n'Paranoid.UtilAdd.u' depends on axioms: [sorryAx]\n"}
+	res := formalRecheckRun(t, rt, "auto", formalFolderProject, head)
+	require.Contains(t, res.ChecksRun, checkFormalRecheck)
+	require.Equal(t, []string{"FV010"}, ruleIDs(res))
+	require.Equal(t, "formal/Formal/Paranoid/UtilAdd.lean", res.Findings[0].File)
+	require.Equal(t, 5, res.Findings[0].Line)
+	var check string
+	for _, c := range rt.calls {
+		if strings.HasPrefix(c, "docker run") && strings.Contains(c, "-fcheck") {
+			check = c
+		}
+	}
+	require.Contains(t, check, "cd /work/formal")
+	require.Contains(t, check, "lake build Formal.Paranoid.UtilAdd")
+}

@@ -168,8 +168,12 @@
       the same way. <code>formal status</code> exits 2 when a locked
       spec is drifted or missing, 0 otherwise, and 3 on error.
       <code>formal fill</code> exits 0 when every hole was filled, 2
-      when any hole failed or was skipped, and 3 on error; see
-      <a href="formal.html">formal</a>.
+      when any hole failed or was skipped, and 3 on error.
+      <code>formal prove</code> exits 0 when the draft matches the code
+      (or, with <code>--continue</code>, when every locked theorem is
+      proved and the model still matches), 2 when no matching model was
+      found or something is not proved, and 3 on error, including a
+      refused hotspot; see <a href="formal.html#prove">formal</a>.
     </p>
     <p>
       <code>paranoid attest verify</code> has its own, separate exit

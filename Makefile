@@ -38,7 +38,7 @@ smoke-live:
 # containers, plus real go, python3, and node. Needs docker or podman
 # and network access. Not part of check or CI.
 formal-live:
-	go test -tags formallive -count=1 -timeout 60m -run 'TestLive(Lean|Rocq|Fill)' ./internal/cli/
+	go test -tags formallive -count=1 -timeout 60m -run 'TestLive(Lean|Rocq|Fill|Prove)' ./internal/cli/
 	go test -tags formallive -count=1 -timeout 60m -run 'TestLiveDiff' ./internal/difftest/
 
 clean:
