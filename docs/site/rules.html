@@ -181,9 +181,10 @@
       <a href="#claims">Claims</a>
       <a href="#api-surface">API surface</a>
       <a href="#safety">Safety</a>
+      <a href="#formal-verification">Formal verification</a>
     </div>
     <p>
-      Seven categories, 42 rules. <a href="sessions-claims.html">Claims</a>
+      Eight categories, 50 rules. <a href="sessions-claims.html">Claims</a>
       and <a href="sandbox.html">sandbox</a> have their own pages with
       more context; the full text of every rule in every category is
       below.
@@ -506,6 +507,110 @@
       <p><strong>Why it matters:</strong> instead of fixing findings, an agent can edit the file that suppresses them or remove the hook that runs the check. Both changes look like routine config maintenance in a diff.</p>
       <p><strong>Example:</strong> the diff adds an entry to <code>.paranoid-baseline.json</code> that suppresses a finding which would otherwise fail the run, or the Stop hook entry that runs <code>paranoid verify</code> is deleted from <code>.claude/settings.json</code>.</p>
       <p><strong>Known false positives:</strong> fires on every legitimate use of these files too: re-running <code>paranoid baseline</code> to refresh the snapshot, hand-adding a reviewed suppression with a reason, or ordinary hook maintenance all trigger this rule exactly like a deliberate attempt to suppress a finding. Treat it as a standing instruction to review any change to these files, never as a verdict on intent. The hook-configuration half only recognizes <code>.claude/settings.json</code>, <code>.claude/settings.local.json</code>, and this project's own <code>.pre-commit-hooks.yaml</code>; a hook wired through any other mechanism is invisible to this rule.</p>
+    </div>
+
+    <h2 id="formal-verification">Formal verification (FV)</h2>
+    <div class="card">
+      <p>
+        Text-based audit of Lean 4 (<code>.lean</code>) and Rocq
+        (<code>.v</code>) proof files, plus their build files. These
+        rules read source with comments and strings blanked out. They
+        cannot see a hole hidden behind a macro or a notation, and a
+        green result never means the theorem says what you meant. See
+        <a href="#spec-lock">the spec lock file</a> for how to pin an
+        approved statement. These rules run only when the diff touches a
+        proof file, a proof build file, or the lock file.
+      </p>
+    </div>
+    <div class="rule" id="FV001">
+      <h3><span class="rule-id">FV001</span> proof hole added <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a Lean or Rocq file holds more proof holes at head than at base. Lean: <code>sorry</code> and <code>admit</code>. Rocq: <code>admit</code>, <code>give_up</code>, and the sentence <code>Admitted.</code>. Comments and string literals are blanked first, so they never count. Holes are counted per file by line text; when head has more of a given line than base, the extra head lines are reported. An added file counts from zero.</p>
+      <p><strong>Why it matters:</strong> a hole makes the checker accept a theorem that has no proof. The proof file still builds and the theorem still looks proved, but nothing backs it.</p>
+      <p><strong>Example:</strong> the agent was asked to prove <code>List.reverse_reverse</code>, and the induction step in <code>Proofs/Reverse.lean</code> now ends in <code>sorry</code>.</p>
+      <p><strong>Known false positives:</strong> a deliberate work-in-progress hole fires, and so does moving a hole to a changed line (the line text changed, so it counts as new). A hole hidden behind a macro, a notation, or a custom tactic is not seen (a false negative). Only the Lean and Rocq spellings listed above are known.</p>
+    </div>
+    <div class="rule" id="FV002">
+      <h3><span class="rule-id">FV002</span> axiom or trust escape added <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a Lean or Rocq file holds more axioms or trust escapes at head than at base. Lean: <code>axiom</code>, <code>native_decide</code>, <code>implemented_by</code>, <code>@[extern</code>, <code>unsafe</code>, <code>ofReduceBool</code>. Rocq: <code>Axiom</code>, <code>Axioms</code>, <code>Conjecture</code>, <code>Parameter</code>, <code>Parameters</code>, <code>Admit Obligations</code>. Counted the same way as FV001.</p>
+      <p><strong>Why it matters:</strong> an axiom lets the agent assume the hard part of a proof. <code>native_decide</code> and <code>ofReduceBool</code> move trust from the kernel to the compiler.</p>
+      <p><strong>Example:</strong> head adds <code>axiom parse_total : forall s, ...</code> so a later theorem can use it without proof.</p>
+      <p><strong>Known false positives:</strong> a Rocq <code>Parameter</code> is often a legitimate abstract interface, and a Lean <code>unsafe</code> or <code>@[extern</code> is normal in code that is not a proof. Reviewing it is the point. Escapes hidden behind macros or notations are not seen. Phase 2's kernel audit is the exact check.</p>
+    </div>
+    <div class="rule" id="FV003">
+      <h3><span class="rule-id">FV003</span> theorem statement changed <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a theorem or lemma with the same qualified name in the same file has a different normalized statement at head than at base. A statement is the text from the name to the top-level <code>:=</code> (Lean) or the sentence-ending period (Rocq), with comments removed and whitespace collapsed. Names that are locked in the base spec lock file are skipped, because FV004 covers them.</p>
+      <p><strong>Why it matters:</strong> the checker only proves the statement as written. An agent that cannot prove a theorem can weaken the statement until the proof is easy, and the file still builds.</p>
+      <p><strong>Example:</strong> <code>theorem sort_perm (l : List Nat) : Perm (sort l) l</code> becomes <code>theorem sort_perm (l : List Nat) : (sort l).length = l.length</code>.</p>
+      <p><strong>Known false positives:</strong> any edit that changes tokens fires, even a harmless one such as renaming a bound variable, adding a type annotation, or adding a hypothesis the proof needs. A pure reformat or comment change does not fire. A theorem renamed in the same diff is not matched and so is not seen here (FV005 may fire instead).</p>
+    </div>
+    <div class="rule" id="FV004">
+      <h3><span class="rule-id">FV004</span> locked spec does not match <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> a spec in <code>.paranoid-specs.json</code> points at a proof file that is in the diff, and at head the declaration is missing from that file or its statement hash differs from the locked hash. The lock is read as it is at base, so editing the lock file in the same diff does not hide the change.</p>
+      <p><strong>Why it matters:</strong> a lock exists so a human approves a statement once. If the statement moves, the proof no longer says what was approved.</p>
+      <p><strong>Example:</strong> the lock pins <code>Parser.parse_total</code> in <code>Proofs/Parser.lean</code>, and head changes its statement to cover only ASCII input.</p>
+      <p><strong>Known false positives:</strong> a legitimate, approved change to a locked statement fires until a human updates the lock in a later commit. A declaration moved to a different file fires because the lock names a file. If the lock file itself is malformed at base, the check is skipped.</p>
+    </div>
+    <div class="rule" id="FV005">
+      <h3><span class="rule-id">FV005</span> theorem removed <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> a theorem or lemma was declared in a changed proof file at base, is absent from that file at head, and a search of the head tree for a theorem or lemma with that short name finds nothing. A move to another file does not fire. Locked names are reported by FV004 only.</p>
+      <p><strong>Why it matters:</strong> a theorem that cannot be proved can be deleted instead. The build goes green and the missing guarantee is easy to miss in a large diff.</p>
+      <p><strong>Example:</strong> <code>theorem Parser.parse_total</code> is gone from <code>Proofs/Parser.lean</code> and no <code>.lean</code> file at head declares <code>parse_total</code>.</p>
+      <p><strong>Known false positives:</strong> the move check is a text search for <code>theorem</code> or <code>lemma</code> (Rocq: Theorem, Lemma, and similar) followed by the short name, in <code>.lean</code> or <code>.v</code> files. A theorem that was renamed fires. A theorem re-declared with another keyword, or generated by a macro, may fire or may be missed. A short name that is common can hide a real removal.</p>
+    </div>
+    <div class="rule" id="FV006">
+      <h3><span class="rule-id">FV006</span> checker soundness switch turned on <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> more soundness switches at head than at base, in <code>.lean</code>, <code>.v</code>, and build files (<code>_CoqProject</code>, <code>lakefile.lean</code>, <code>lakefile.toml</code>, <code>dune</code>, <code>dune-project</code>). Rocq: <code>Unset Guard Checking</code>, <code>Unset Positivity Checking</code>, <code>Unset Universe Checking</code>, <code>#[bypass_check</code>, <code>-type-in-type</code>. Lean: <code>debug.skipKernelTC</code>. Whole-line comments in build files are skipped.</p>
+      <p><strong>Why it matters:</strong> these switches let the checker accept non-terminating or inconsistent definitions, so any statement can be proved. A green build then means nothing.</p>
+      <p><strong>Example:</strong> <code>_CoqProject</code> gains the flag <code>-type-in-type</code>, or a proof file starts with <code>Unset Guard Checking.</code>.</p>
+      <p><strong>Known false positives:</strong> research code that studies these features on purpose fires too. A switch spelled in a way the patterns do not know, or set through an include file, is not seen.</p>
+    </div>
+    <div class="rule" id="FV007">
+      <h3><span class="rule-id">FV007</span> spec lock file changed <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> any add, modify, or delete of <code>.paranoid-specs.json</code>. One finding for the file, at line 0.</p>
+      <p><strong>Why it matters:</strong> the lock is what keeps approved statements fixed. An agent that changes a statement can change the lock to match, so every edit needs a human look. This is the same idea as SF006 for the baseline file.</p>
+      <p><strong>Example:</strong> the diff updates a <code>statement_sha256</code> in <code>.paranoid-specs.json</code> right next to a change to the matching theorem.</p>
+      <p><strong>Known false positives:</strong> every legitimate lock update fires, including the first time the file is created with <code>paranoid formal lock</code>. Treat it as a standing request for review, not a verdict on intent.</p>
+    </div>
+    <div class="rule" id="FV008">
+      <h3><span class="rule-id">FV008</span> code and its locked proof changed together <span class="sev-badge sev-medium">medium</span></h3>
+      <p><strong>What it detects:</strong> a spec in the base lock file has a <code>code</code> path, and both that path and the spec's proof file are changed in the diff.</p>
+      <p><strong>Why it matters:</strong> a theorem is only as useful as the model or code it talks about. An agent can make the code simpler or narrower so the theorem becomes trivial to prove.</p>
+      <p><strong>Example:</strong> the lock says <code>internal/parser/parse.go</code> backs <code>Parser.parse_total</code>, and one diff edits both that file and <code>Proofs/Parser.lean</code>.</p>
+      <p><strong>Known false positives:</strong> a real fix to the code that needs a matching proof update fires. It only fires for specs that set the optional <code>code</code> field. The rule looks at paths, not at what changed inside the code.</p>
+    </div>
+
+    <h3 id="spec-lock">The spec lock file</h3>
+    <div class="card">
+      <p>
+        <code>.paranoid-specs.json</code> sits at the repo root. A human
+        approves a theorem statement once, and the lock pins it. FV004
+        compares the head against the lock as it was at base, so editing
+        the lock in the same diff does not hide a change. FV007 flags
+        every change to the lock file itself.
+      </p>
+<pre><code>{
+  "version": 1,
+  "specs": [
+    {
+      "name": "Parser.parse_total",
+      "file": "Proofs/Parser.lean",
+      "statement_sha256": "&lt;64 lowercase hex characters&gt;",
+      "code": "internal/parser/parse.go",
+      "note": "parse never fails on valid UTF-8"
+    }
+  ]
+}</code></pre>
+      <p>
+        <code>version</code> must be 1. <code>name</code>,
+        <code>file</code>, and <code>statement_sha256</code> are
+        required. <code>code</code> and <code>note</code> are optional;
+        <code>code</code> turns on FV008 for that spec. The hash is the
+        SHA-256 of the normalized statement (comments removed, runs of
+        whitespace collapsed to one space), written as lowercase hex.
+        Specs are kept sorted by name, then file. A lock file that does
+        not parse at base is reported as a skipped check named
+        <code>formal-verification/spec-lock</code>.
+      </p>
     </div>
 
     <hr>

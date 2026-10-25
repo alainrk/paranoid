@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "specs": [
+    {
+      "name": "push_pop",
+      "file": "Proofs/Stack.v",
+      "statement_sha256": "69d856dd181701af50b4faa70991a4364c07733de1a8a497fb55843b4942ddf7",
+      "code": "lib/stack.ml",
+      "note": "pop undoes push"
+    }
+  ]
+}

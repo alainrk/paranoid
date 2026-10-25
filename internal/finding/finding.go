@@ -64,7 +64,7 @@ func (s *Severity) UnmarshalJSON(data []byte) error {
 // Category groups findings by the kind of check that produced them.
 type Category string
 
-// The seven finding categories.
+// The eight finding categories.
 const (
 	TestIntegrity Category = "test-integrity"
 	Dependencies  Category = "dependencies"
@@ -73,6 +73,8 @@ const (
 	ErrorHandling Category = "error-handling"
 	APISurface    Category = "api-surface"
 	Safety        Category = "safety"
+	// FormalVerification covers proof-audit rules for Lean and Rocq files.
+	FormalVerification Category = "formal-verification"
 )
 
 // Finding is one concrete result of a rule firing.

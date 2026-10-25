@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "specs": [
+    {
+      "name": "clamp_le",
+      "file": "Proofs/Clamp.lean",
+      "statement_sha256": "63ca2a72a22cf95852d6cb3ce5a550c247fe3e4c339bfcbb7a8568e91b607cdb"
+    }
+  ]
+}
