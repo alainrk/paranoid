@@ -34,10 +34,12 @@ docs:
 smoke-live:
 	go test -tags smokelive -count=1 -run TestLiveLookups ./internal/registry/
 
-# Live proof re-check against real Lean and Rocq containers. Needs docker
-# or podman and network access. Not part of check or CI.
+# Live proof re-check and differential test against real Lean and Rocq
+# containers, plus real go, python3, and node. Needs docker or podman
+# and network access. Not part of check or CI.
 formal-live:
 	go test -tags formallive -count=1 -timeout 60m -run 'TestLive(Lean|Rocq|Fill)' ./internal/cli/
+	go test -tags formallive -count=1 -timeout 60m -run 'TestLiveDiff' ./internal/difftest/
 
 clean:
 	rm -rf bin dist
