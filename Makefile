@@ -37,7 +37,7 @@ smoke-live:
 # Live proof re-check against real Lean and Rocq containers. Needs docker
 # or podman and network access. Not part of check or CI.
 formal-live:
-	go test -tags formallive -count=1 -timeout 60m -run 'TestLive(Lean|Rocq)' ./internal/cli/
+	go test -tags formallive -count=1 -timeout 60m -run 'TestLive(Lean|Rocq|Fill)' ./internal/cli/
 
 clean:
 	rm -rf bin dist
