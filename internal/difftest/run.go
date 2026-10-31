@@ -270,19 +270,22 @@ func tail(s string) string {
 // need them.
 var skipDirs = map[string]bool{".git": true, "node_modules": true, ".paranoid": true, ".lake": true}
 
-// copyTree copies the regular files under src to dst. Symlinks are skipped.
+// copyTree copies the regular files under src to dst. Symlinks are
+// skipped. Reads go through an os.Root, so a path swapped for a symlink
+// during the walk cannot reach outside src.
 func copyTree(src, dst string) error {
-	return filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
+	root, err := os.OpenRoot(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	return fs.WalkDir(root.FS(), ".", func(rel string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		rel, err := filepath.Rel(src, p)
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(dst, rel)
+		target := filepath.Join(dst, filepath.FromSlash(rel))
 		if d.IsDir() {
-			if p != src && skipDirs[d.Name()] {
+			if rel != "." && skipDirs[d.Name()] {
 				return filepath.SkipDir
 			}
 			return os.MkdirAll(target, 0o750)
@@ -290,7 +293,7 @@ func copyTree(src, dst string) error {
 		if !d.Type().IsRegular() {
 			return nil
 		}
-		in, err := os.Open(p) // #nosec G304 -- walking the user's own source tree
+		in, err := root.Open(rel)
 		if err != nil {
 			return err
 		}
