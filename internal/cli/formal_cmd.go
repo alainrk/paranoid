@@ -18,15 +18,15 @@ import (
 )
 
 // newFormalCmd builds the `paranoid formal` command group. Every
-// subcommand here is offline: it reads the worktree and the spec lock
+// subcommand so far is offline: it reads the worktree and the spec lock
 // file and never calls a network or a model.
 func newFormalCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "formal",
 		Short: "Lock and inspect proof statements (Lean and Rocq)",
-		Long:  "Work with the spec lock file (" + fparse.LockFileName + ") and look at the state of proof files. All subcommands run offline.",
+		Long:  "Work with the spec lock file (" + fparse.LockFileName + ") and look at the state of proof files. The subcommands on this page run offline.",
 	}
-	cmd.AddCommand(newFormalLockCmd(), newFormalUnlockCmd(), newFormalStatusCmd())
+	cmd.AddCommand(newFormalLockCmd(), newFormalUnlockCmd(), newFormalStatusCmd(), newFormalProvidersCmd())
 	return cmd
 }
 

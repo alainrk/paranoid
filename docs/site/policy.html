@@ -153,7 +153,17 @@ image-python = "python:3.12-slim"
 image-node = "node:22-slim"
 
 [formal]
-allowed_axioms = ["Classical.choice"]</code></pre>
+allowed_axioms = ["Classical.choice"]
+
+[formal.llm]
+provider = "anthropic"
+model = "claude-opus-5-5"
+
+[formal.llm.proof]
+provider = "openai"
+model = "my-local-prover"
+base_url = "http://localhost:11434/v1"
+api_key_env = "LOCAL_LLM_KEY"</code></pre>
     <table class="mono">
       <tr><th>Key</th><th>Type</th><th>Meaning</th></tr>
       <tr><td>fail-under</td><td>integer</td><td>This repo's own --fail-under default</td></tr>
@@ -165,6 +175,10 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       <tr><td>[sandbox].image-python</td><td>string</td><td>Container image pin for a detected Python suite (pytest or unittest)</td></tr>
       <tr><td>[sandbox].image-node</td><td>string</td><td>Container image pin for a detected npm/pnpm/yarn suite</td></tr>
       <tr><td>[formal].allowed_axioms</td><td>list of strings, on one line</td><td>Axioms FV010 accepts in addition to the defaults (Lean: <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code>; Rocq: none). Each entry must be a non-empty string. <code>sorryAx</code>, <code>Lean.ofReduceBool</code>, and <code>Lean.trustCompiler</code> are rejected with an error, because allowing them would hide a hole. Only read with <code>verify --formal-check</code></td></tr>
+      <tr><td>[formal.llm].provider<br>[formal.llm.proof].provider<br>[formal.llm.spec].provider</td><td>string</td><td><code>anthropic</code>, <code>openai</code>, or <code>gemini</code>. Default <code>anthropic</code></td></tr>
+      <tr><td>[formal.llm*].model</td><td>string</td><td>Model name. Default <code>claude-opus-5-5</code> for anthropic. The other providers have no default, so a model is required</td></tr>
+      <tr><td>[formal.llm*].base_url</td><td>string</td><td>An http or https URL, without a user name or password. For <code>openai</code> this is how you point at a local or compatible server</td></tr>
+      <tr><td>[formal.llm*].api_key_env</td><td>string</td><td>The NAME of the environment variable that holds the key. Default <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, or <code>GEMINI_API_KEY</code></td></tr>
     </table>
     <p>
       <code>[[disable]]</code> is an array of tables: repeat the block
@@ -173,6 +187,22 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       <code>fail-under</code> and <code>strict</code> is valid, and so
       is an empty file.
     </p>
+
+    <h2 id="formal-llm">LLM settings: [formal.llm]</h2>
+    <p>
+      These tables set the provider for the online
+      <code>paranoid formal</code> subcommands. They are never read by
+      <code>verify</code>, which does not call an LLM. See
+      <a href="formal.html#online">Online features and providers</a>.
+    </p>
+    <ul>
+      <li><code>[formal.llm]</code> is the default for every task. <code>[formal.llm.proof]</code> (proof search) and <code>[formal.llm.spec]</code> (spec drafting) override it, field by field.</li>
+      <li>A task table that names a different provider than the winning one does not lend its model, base URL, or key variable to it. Each provider keeps its own.</li>
+      <li>The flags <code>--provider</code>, <code>--model</code>, and <code>--base-url</code> beat the file.</li>
+      <li>Keys are never in this file. A key such as <code>api_key</code>, <code>key</code>, <code>token</code>, or <code>secret</code> is an error. <code>api_key_env</code> must be a variable name, not a key. The error does not repeat the value.</li>
+      <li>Each of the three tables may appear at most once. Unknown keys and unknown tables are errors.</li>
+    </ul>
+    <p>Run <code>paranoid formal providers</code> to see what the file resolves to.</p>
 
     <h2>Precedence</h2>
     <p>
