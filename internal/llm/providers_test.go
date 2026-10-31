@@ -305,7 +305,7 @@ func TestDefaultMaxTokensAndModel(t *testing.T) {
 	_, err := p.Complete(t.Context(), Request{Messages: []Message{{Role: "user", Text: "hi"}}})
 	require.NoError(t, err)
 	require.Contains(t, sc.bodies[0], `"model":"claude-opus-5-5"`)
-	require.Contains(t, sc.bodies[0], `"max_tokens":16000`)
+	require.Contains(t, sc.bodies[0], `"max_tokens":32000`)
 }
 
 func TestContextCancelStopsRetries(t *testing.T) {
@@ -323,7 +323,7 @@ func TestContextCancelStopsRetries(t *testing.T) {
 	require.Equal(t, 1, sc.calls)
 }
 
-func TestConnectionErrorHidesKeyAndIsNotRetried(t *testing.T) {
+func TestConnectionErrorHidesKeyAndIsRetried(t *testing.T) {
 	srv := httptest.NewServer(http.NotFoundHandler())
 	url := srv.URL
 	srv.Close()
@@ -332,8 +332,40 @@ func TestConnectionErrorHidesKeyAndIsNotRetried(t *testing.T) {
 	_, err := NewOpenAI(o).Complete(t.Context(), testReq)
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), testKey)
-	require.Empty(t, sl.got)
+	require.Equal(t, []time.Duration{time.Second, 2 * time.Second, 4 * time.Second}, sl.got)
 	require.False(t, errors.Is(err, ErrMalformedResponse))
+}
+
+// A connection that drops in the middle of the reply is retried. This
+// happened for real (an HTTP/2 GOAWAY from a provider).
+func TestDroppedReplyIsRetried(t *testing.T) {
+	var mu sync.Mutex
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		calls++
+		n := calls
+		mu.Unlock()
+		if n == 1 {
+			w.Header().Set("Content-Length", "1000")
+			w.WriteHeader(http.StatusOK)
+			_, _ = io.WriteString(w, `{"choices":`)
+			conn, _, err := http.NewResponseController(w).Hijack()
+			if err == nil {
+				_ = conn.Close()
+			}
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, openaiOK)
+	}))
+	defer srv.Close()
+	sl := &sleeps{}
+	resp, err := NewOpenAI(newOpts(srv, sl)).Complete(t.Context(), testReq)
+	require.NoError(t, err)
+	require.Equal(t, "theorem done", resp.Text)
+	require.Equal(t, 2, calls)
+	require.Equal(t, []time.Duration{time.Second}, sl.got)
 }
 
 func TestParseRetryAfter(t *testing.T) {

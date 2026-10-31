@@ -20,6 +20,7 @@ type scriptedProvider struct {
 	replies []string
 	err     error // returned when the replies run out
 	reqs    []llm.Request
+	stops   []string // optional stop reason per reply
 }
 
 func (p *scriptedProvider) Name() string { return "fake" }
@@ -32,7 +33,12 @@ func (p *scriptedProvider) Complete(_ context.Context, req llm.Request) (llm.Res
 		}
 		return llm.Response{}, errors.New("the script ran out of replies")
 	}
-	return llm.Response{Text: p.replies[len(p.reqs)-1]}, nil
+	i := len(p.reqs) - 1
+	resp := llm.Response{Text: p.replies[i]}
+	if i < len(p.stops) {
+		resp.StopReason = p.stops[i]
+	}
+	return resp, nil
 }
 
 // fakeChecker stands in for the toolchain. fn sees the file content.
@@ -261,6 +267,32 @@ func TestFillRetryCarriesCheckerErrors(t *testing.T) {
 	require.Contains(t, second, "Your previous attempt")
 	require.Contains(t, second, "Whole file:")
 	require.NotContains(t, prov.reqs[0].Messages[0].Text, "Your previous attempt")
+}
+
+// An empty answer cut off at the output cap must not wipe the checker
+// output from the attempt before it.
+func TestFillKeepsHistoryAfterTruncatedAnswer(t *testing.T) {
+	prov := &scriptedProvider{
+		replies: []string{fence("by\n  omega"), "", fence("by\n  rfl")},
+		stops:   []string{"stop", "length", "stop"},
+	}
+	calls := 0
+	chk := &fakeChecker{fn: func(c string) (string, int, error) {
+		calls++
+		if calls == 1 {
+			return "A.lean:6:2: error: omega failed", 1, nil
+		}
+		return cleanLean(c)
+	}}
+	r := newRunner(prov, chk)
+	r.Attempts = 3
+	_, results, err := r.Fill(context.Background(), "A.lean", []byte(leanSrc), nil)
+	require.NoError(t, err)
+	require.Equal(t, Filled, results[0].Status)
+	third := prov.reqs[2].Messages[0].Text
+	require.Contains(t, third, "reached its output limit")
+	require.Contains(t, third, "omega failed")
+	require.Contains(t, third, "Your previous attempt")
 }
 
 func TestFillExhaustsAttempts(t *testing.T) {

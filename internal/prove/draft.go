@@ -111,7 +111,7 @@ func (d *Drafter) Run(ctx context.Context, h *hotspot.Hotspot) (DraftResult, err
 		}
 		msgs = append(msgs, llm.Message{Role: "assistant", Text: resp.Text})
 
-		block, perr := fill.ParseAnswer(resp.Text)
+		block, perr := fill.ParseReply(resp)
 		var draft *Draft
 		if perr == nil {
 			draft, perr = Validate(h, block, true)
