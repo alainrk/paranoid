@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "specs": [
+    {
+      "name": "push_pop",
+      "file": "Proofs/Stack.v",
+      "statement_sha256": "1f7c0290c0b3a5e2cccf30d7757acfbd7d4217e2ebe754584d2056fefadece71"
+    }
+  ]
+}

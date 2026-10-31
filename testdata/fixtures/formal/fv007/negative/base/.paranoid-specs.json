@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "specs": [
+    {
+      "name": "Parser.parse_total",
+      "file": "Proofs/Parser.lean",
+      "statement_sha256": "a01094dcc56618edf8818510ec82650480e93c902aa4471e3862c5d754f05610"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "FV008", "severity": "medium", "category": "formal-verification", "file": "internal/clamp/clamp.go", "line": 0}
+  ]
+}

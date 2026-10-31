@@ -17,7 +17,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 7
+      "const": 8
     },
     "score": {
       "type": "integer",
@@ -66,7 +66,7 @@
           "enum": ["info", "low", "medium", "high", "critical"]
         },
         "category": {
-          "enum": ["test-integrity", "dependencies", "sandbox", "claims", "error-handling", "api-surface", "safety"]
+          "enum": ["test-integrity", "dependencies", "sandbox", "claims", "error-handling", "api-surface", "safety", "formal-verification"]
         },
         "file": {
           "type": "string"

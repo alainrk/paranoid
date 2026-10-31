@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "FV006", "severity": "critical", "category": "formal-verification", "file": "_CoqProject", "line": 2}
+  ]
+}

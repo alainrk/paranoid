@@ -144,7 +144,7 @@
       the shape differs.
     </p>
 
-    <h2>The JSON report, schema version 7</h2>
+    <h2>The JSON report, schema version 8</h2>
     <p>
       The JSON report follows a versioned schema, checked in at
       <a href="https://github.com/alainrk/paranoid/blob/main/docs/schema/report-v1.schema.json">docs/schema/report-v1.schema.json</a>.
@@ -157,7 +157,7 @@
     </p>
     <table class="mono">
       <tr><th>Top-level field</th><th>Type</th><th>Meaning</th></tr>
-      <tr><td>schema_version</td><td>integer</td><td>Always 7 today</td></tr>
+      <tr><td>schema_version</td><td>integer</td><td>Always 8 today</td></tr>
       <tr><td>score</td><td>integer 0-100</td><td>The trust score</td></tr>
       <tr><td>verdict</td><td>"pass" | "warn" | "fail"</td><td>Derived from the score</td></tr>
       <tr><td>findings</td><td>array of finding</td><td>Everything that fired, minus baseline and policy suppressions</td></tr>
@@ -172,7 +172,7 @@
       <tr><th>Field</th><th>Type</th></tr>
       <tr><td>rule_id</td><td>string, e.g. "TI001"</td></tr>
       <tr><td>severity</td><td>"info" | "low" | "medium" | "high" | "critical"</td></tr>
-      <tr><td>category</td><td>"test-integrity" | "dependencies" | "sandbox" | "claims" | "error-handling" | "api-surface" | "safety"</td></tr>
+      <tr><td>category</td><td>"test-integrity" | "dependencies" | "sandbox" | "claims" | "error-handling" | "api-surface" | "safety" | "formal-verification"</td></tr>
       <tr><td>file</td><td>string</td></tr>
       <tr><td>line</td><td>integer, 0 when unknown</td></tr>
       <tr><td>evidence</td><td>string, truncated to about 200 characters</td></tr>
@@ -198,7 +198,7 @@
       <tr><td>source</td><td>"baseline" | "policy" (schema version 7)</td></tr>
     </table>
     <pre><code>{
-  "schema_version": 7,
+  "schema_version": 8,
   "score": 40,
   "verdict": "fail",
   "findings": [

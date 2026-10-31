@@ -12,9 +12,10 @@ import "time"
 // (baseline suppression). Version 7 added Suppression.Source (for
 // the .paranoid.toml team policy file), so a suppressed
 // finding says whether it was the baseline or the policy file that
-// suppressed it. The schema file keeps its report-v1.schema.json name;
+// suppressed it. Version 8 added the formal-verification category
+// (FV001 to FV008). The schema file keeps its report-v1.schema.json name;
 // only the schema_version field and the fields it requires changed.
-const SchemaVersion = 7
+const SchemaVersion = 8
 
 // Suppression sources: which file matched and removed a finding.
 const (

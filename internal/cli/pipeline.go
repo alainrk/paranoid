@@ -229,6 +229,18 @@ func runVerify(ctx context.Context, in verifyInput, now func() time.Time) (findi
 		checksSkipped = append(checksSkipped, *as.skipped)
 	}
 
+	fv, err := runFormalStage(ctx, repo, baseRef, headRef, changes)
+	if err != nil {
+		return finding.Result{}, err
+	}
+	findings = append(findings, fv.findings...)
+	if fv.ran {
+		checksRun = append(checksRun, checkFormal)
+	}
+	if fv.skipped != nil {
+		checksSkipped = append(checksSkipped, *fv.skipped)
+	}
+
 	checksRun = append(checksRun, checkErrHandling, checkSafety, checkConfigIntegrity, checkGoTestIntegrity, checkJSTestIntegrity, checkPyTestIntegrity)
 	finding.Sort(findings)
 

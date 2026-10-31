@@ -11,13 +11,14 @@ import (
 
 func TestRegistryIsWellFormed(t *testing.T) {
 	validCategories := map[finding.Category]bool{
-		finding.TestIntegrity: true,
-		finding.Dependencies:  true,
-		finding.Sandbox:       true,
-		finding.Claims:        true,
-		finding.ErrorHandling: true,
-		finding.APISurface:    true,
-		finding.Safety:        true,
+		finding.TestIntegrity:      true,
+		finding.Dependencies:       true,
+		finding.Sandbox:            true,
+		finding.Claims:             true,
+		finding.ErrorHandling:      true,
+		finding.APISurface:         true,
+		finding.Safety:             true,
+		finding.FormalVerification: true,
 	}
 	seen := map[string]bool{}
 	for _, r := range All() {
@@ -124,6 +125,14 @@ func TestSeveritiesMatchPlan(t *testing.T) {
 		"SF004":  finding.High,
 		"SF005":  finding.High,
 		"SF006":  finding.High,
+		"FV001":  finding.High,
+		"FV002":  finding.High,
+		"FV003":  finding.Medium,
+		"FV004":  finding.Critical,
+		"FV005":  finding.High,
+		"FV006":  finding.Critical,
+		"FV007":  finding.High,
+		"FV008":  finding.Medium,
 	}
 	// Severities are frozen once released. This test only grows; rows
 	// are never edited or removed.

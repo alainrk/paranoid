@@ -1,0 +1,3 @@
+-R theories Demo
+-arg -type-in-type
+theories/Basic.v

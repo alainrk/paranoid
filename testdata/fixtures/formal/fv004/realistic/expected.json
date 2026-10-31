@@ -1,0 +1,6 @@
+{
+  "findings": [
+    {"rule_id": "FV004", "severity": "critical", "category": "formal-verification", "file": "Proofs/Stack.v", "line": 3},
+    {"rule_id": "FV007", "severity": "high", "category": "formal-verification", "file": ".paranoid-specs.json", "line": 0}
+  ]
+}

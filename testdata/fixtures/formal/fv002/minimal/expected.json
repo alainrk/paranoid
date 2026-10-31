@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "FV002", "severity": "high", "category": "formal-verification", "file": "Spec.v", "line": 2}
+  ]
+}

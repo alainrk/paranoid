@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "FV007", "severity": "high", "category": "formal-verification", "file": ".paranoid-specs.json", "line": 0}
+  ]
+}

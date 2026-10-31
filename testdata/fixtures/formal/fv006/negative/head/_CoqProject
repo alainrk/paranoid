@@ -1,0 +1,3 @@
+-R theories Demo
+# We never use -type-in-type here.
+theories/Tree.v
