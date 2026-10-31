@@ -1,0 +1,5 @@
+{
+  "findings": [
+    {"rule_id": "CLM006", "severity": "medium", "category": "claims", "file": "", "line": 0}
+  ]
+}

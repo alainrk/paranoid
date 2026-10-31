@@ -74,6 +74,9 @@ type Extraction struct {
 	TestsPass  []string // sentences claiming the tests pass
 	AddedTests int      // N from "added N tests"; -1 when never claimed
 	Actions    []ActionClaim
+	// ProofClaims are the lines claiming something was proved or
+	// formally verified (CLM006).
+	ProofClaims []string
 }
 
 // changeVerbs mark lines that talk about doing something to files.
@@ -104,6 +107,15 @@ var testsPassRes = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)test suite (passes|passed|is green)`),
 	regexp.MustCompile(`(?i)\bevery test (passes|passed)\b`),
 }
+
+// proofClaimRe matches a claim that a proof exists. Bare "verified"
+// is too common ("verified the tests pass") and is left out on
+// purpose. Word boundaries keep "approved", "improved", "proofread",
+// "bulletproof" and "waterproof" out. "proof of concept" is not a
+// proof claim and is removed before matching.
+var proofClaimRe = regexp.MustCompile(`(?i)\b(proved|proven|formally verified|formally verify|machine-checked|wrote a proof|added a proof|proof of)\b`)
+
+var proofOfConceptRe = regexp.MustCompile(`(?i)\bproof[- ]of[- ]concept\b`)
 
 // addedTestsRe captures N from "added N tests".
 var addedTestsRe = regexp.MustCompile(`(?i)\badd(?:ed)? (\d+) (?:new )?tests?\b`)
@@ -141,6 +153,10 @@ func Extract(text string) Extraction {
 				out.TestsPass = append(out.TestsPass, line)
 				break
 			}
+		}
+
+		if proofClaimRe.MatchString(proofOfConceptRe.ReplaceAllString(line, "")) {
+			out.ProofClaims = append(out.ProofClaims, line)
 		}
 
 		if m := addedTestsRe.FindStringSubmatch(line); m != nil {

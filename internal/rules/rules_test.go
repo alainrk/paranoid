@@ -112,6 +112,7 @@ func TestSeveritiesMatchPlan(t *testing.T) {
 		"CLM003": finding.Low,
 		"CLM004": finding.Medium,
 		"CLM005": finding.Low,
+		"CLM006": finding.Medium,
 		"EH001":  finding.Medium,
 		"EH002":  finding.Medium,
 		"EH003":  finding.Medium,

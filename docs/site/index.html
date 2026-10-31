@@ -168,6 +168,7 @@
       <a href="sandbox.html">Sandbox &amp; coverage</a>
       <a href="fix-prompt.html">fix-prompt</a>
       <a href="watch.html">watch</a>
+      <a href="formal.html">formal</a>
     </div>
     <div class="grp">
       <div class="grp-label">Trust</div>
@@ -267,6 +268,11 @@
         <h3>watch</h3>
         <p>Watch a repository and run static checks live, on every change.</p>
       </a>
+      <a class="tile" href="formal.html">
+        <span class="rid">Command</span>
+        <h3>formal</h3>
+        <p>Lock theorem statements and see proof holes in Lean and Rocq files.</p>
+      </a>
       <a class="tile" href="attest.html">
         <span class="rid">Trust</span>
         <h3>Signing &amp; attest</h3>
@@ -288,6 +294,7 @@
       <tr><td>paranoid baseline [path]</td><td>Write current findings to .paranoid-baseline.json.</td></tr>
       <tr><td>paranoid history [path]</td><td>Render a score-over-time trend from reports saved by verify --save.</td></tr>
       <tr><td>paranoid watch [path]</td><td>Watch a repository and run static checks on every change.</td></tr>
+      <tr><td>paranoid formal lock|unlock|status</td><td>Pin theorem statements in .paranoid-specs.json and list proof holes.</td></tr>
       <tr><td>paranoid mcp</td><td>Run an MCP server over stdio exposing verify as a tool.</td></tr>
       <tr><td>paranoid attest keygen</td><td>Generate a local ed25519 signing key.</td></tr>
       <tr><td>paranoid attest verify</td><td>Check a report signed by verify --sign.</td></tr>

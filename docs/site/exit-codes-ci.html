@@ -112,6 +112,7 @@
       <a href="sandbox.html">Sandbox &amp; coverage</a>
       <a href="fix-prompt.html">fix-prompt</a>
       <a href="watch.html">watch</a>
+      <a href="formal.html">formal</a>
     </div>
     <div class="grp">
       <div class="grp-label">Trust</div>
@@ -163,6 +164,10 @@
       <code>rules</code>, <code>version</code>, and <code>attest
       keygen</code> only ever exit 0 on success or 3 on error; they
       have no score or verdict of their own to map to 1 or 2.
+      <code>formal lock</code> and <code>formal unlock</code> behave
+      the same way. <code>formal status</code> exits 2 when a locked
+      spec is drifted or missing, 0 otherwise, and 3 on error; see
+      <a href="formal.html">formal</a>.
     </p>
     <p>
       <code>paranoid attest verify</code> has its own, separate exit

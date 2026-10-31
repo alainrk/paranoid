@@ -164,6 +164,22 @@ PR as the rule itself; a registry test fails on any rule missing one.
   severity reflects this; treat every finding as a reason to skim the
   file list, not a verdict.
 
+## CLM006: proof claimed but no proof file changed
+
+- Severity: medium. Category: claims.
+- What it detects: a claim line says something was proved, proven,
+  formally verified, machine-checked, or that a proof was written or
+  added (also "proof of"), and the diff touches no `.lean` (Lean 4) or
+  `.v` (Rocq) file. Bare "verified" and "verify" are not proof claims.
+  One finding per claim line.
+- Why it matters: a claim of a proof can be checked against the diff. If
+  no proof file changed, nothing was proved in this change.
+- Example: the claims say "formally verified the parser" and the diff
+  only changes Go files.
+- Known false positives: a proof kept in a language paranoid does not
+  read (Isabelle, Agda, Dafny) fires. So does a claim about an older
+  proof that this change did not touch. Medium severity reflects this.
+
 ## DEP001: dependency does not exist
 
 - Severity: critical. Category: dependencies.
