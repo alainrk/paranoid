@@ -151,6 +151,13 @@
       deserves a human look. See the
       <a href="rules.html#formal-verification">FV rules</a>.
     </p>
+    <p>
+      A single critical finding, such as FV004 or FV006, gives a
+      <code>warn</code> verdict, the same as in every other category. A
+      warn already exits with code 1, so CI and the Stop hook block on it.
+      If your repo relies on proofs, set <code>strict = true</code> in
+      <code>.paranoid.toml</code> so any warn becomes a fail.
+    </p>
 
     <h2 id="spec-lock-file">The spec lock file</h2>
     <p>
@@ -580,8 +587,9 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       <tr><td>--timeout</td><td>60m</td><td>Stop the whole run after this long</td></tr>
     </table>
     <p>
-      Retries happen only on HTTP 429 and 5xx answers, at most 3 times,
-      waiting for the provider's <code>retry-after</code> when it sends one.
+      Retries happen only on HTTP 429 and 5xx answers and on a connection
+      that drops before the reply is complete, at most 3 times, waiting
+      for the provider's <code>retry-after</code> when it sends one.
       Other errors, such as a refused key, stop at once.
     </p>
 
