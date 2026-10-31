@@ -1,0 +1,9 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+PARANOID-BUILD-OK
+PARANOID-AUDIT
+PARANOID-BEGIN extra
+PARANOID-BEGIN good_add
+Closed under the global context
+PARANOID-ERRORS
+File "./.paranoid/axioms_audit.v", line 4, characters 18-22:
+Error: The reference Demo.Good.extra was not found in the current environment.

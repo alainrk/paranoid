@@ -390,3 +390,20 @@ func FuzzDecls(f *testing.F) {
 		SoundnessSwitches("A.lean", src)
 	})
 }
+
+func TestDeclsLeanPrivate(t *testing.T) {
+	src := "private theorem a : True := trivial\n" +
+		"@[simp] private lemma b : True := trivial\n" +
+		"protected theorem c : True := trivial\n" +
+		"theorem d : True := trivial\n" +
+		"-- private theorem e : True := trivial\n" +
+		"theorem private_looking : True := trivial\n"
+	got := map[string]bool{}
+	for _, d := range Decls(LangLean, []byte(src)) {
+		got[d.Name] = d.Private
+	}
+	want := map[string]bool{"a": true, "b": true, "c": false, "d": false, "private_looking": false}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}

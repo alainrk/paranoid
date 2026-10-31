@@ -50,7 +50,7 @@ the agent cannot move the goalposts.
 |---|---|---|
 | 0 | Product rules: offline and online split | none |
 | 1 | Offline proof-audit rules (FV001 to FV008, CLM006), spec lock, `paranoid formal lock` and `status` | none |
-| 2 | Opt-in clean-room proof re-check and kernel axiom audit (FV009 to FV011) | none |
+| 2 | Opt-in clean-room proof re-check and kernel axiom audit (FV009 to FV012) | none |
 | 3 | Online foundation: `internal/llm`, three providers, key config, caps, request log | LLM only |
 | 4 | BYO: `paranoid formal fill` fills holes, checker in the loop, audit gate | LLM only |
 | 5 | paranoid-made: `paranoid formal prove`, model, spec approval, proof, differential tests | LLM only |
@@ -123,18 +123,69 @@ the lock changing is always visible in the audit.
 
 ## Phase 2 design: clean-room re-check (opt-in)
 
-`paranoid verify --formal-check` builds the proof project inside the
-same clean-room sandbox SBX001 uses (`lake build` for a Lake project,
-`dune build` or `make` from a `_CoqProject` for Rocq), with a timeout.
-Then it asks the kernel which axioms each locked theorem depends on
-(Lean `#print axioms`, Rocq `Print Assumptions`). This part is exact:
-it cannot be fooled by text tricks the static rules miss.
+`paranoid verify --formal-check` rebuilds the proof project in a
+container, using the same runtime choice as `--sandbox` (docker or
+podman; `--sandbox none` means the re-check cannot run). Then it asks
+the kernel which axioms each audited theorem really depends on. This
+part is exact: it cannot be fooled by the text tricks the static rules
+miss (a `sorry` hidden behind a macro or notation still shows up as
+`sorryAx`).
+
+Flags: `--formal-check` (off by default), `--formal-image` (override
+the image), `--formal-timeout` (default 30m; real proof projects are
+slow). Without `--formal-check` nothing changes in the report.
+
+Project detection (repo root only in v1):
+
+- Lean: `lean-toolchain` plus `lakefile.lean` or `lakefile.toml`.
+  Image `debian:bookworm-slim` by default. Prep, network on: install
+  curl, git, ca-certificates; install elan with no default toolchain;
+  install the toolchain named in `lean-toolchain`; fetch Lake
+  dependencies; run `lake exe cache get` when the manifest has
+  Mathlib. Check, network off: `lake build`, then
+  `lake env lean` on a generated file that imports each module and
+  runs `#print axioms <name>` per theorem. Built and tested for real:
+  `lake resolve-deps` fetches dependencies without building. Lake needs
+  a git binary even with the network off (without one it decides each
+  git dependency changed and re-clones it), so the prep step copies git
+  and its libraries onto the volume and the check step puts a small
+  wrapper first on `PATH`. The Mathlib cache step is written but was
+  not run against a real Mathlib project.
+- Rocq: `_CoqProject`, or `dune-project` with a Coq or Rocq stanza.
+  Image `rocq/rocq-prover:9.1` by default. Check, network off: build
+  with `dune build` when there is a `dune-project`, otherwise generate
+  a makefile from `_CoqProject` and run `make`. Then compile a
+  generated file that runs `Print Assumptions <name>` per theorem,
+  with marker lines so each output block maps to its theorem. Checked
+  against the real image: `rocq/rocq-prover:9.1` exists, has only the
+  `rocq` command (`rocq makefile`, `rocq compile`), and the `rocq` user
+  needs its own opam setup, so the check runs as the image user and a
+  root setup step first copies the tree and makes it writable. Older
+  images (`coqorg/coq:8.20`, tested) have `coq_makefile` and `coqc`;
+  the script uses whichever exists. Dune projects use
+  `(using rocq 0.11)` with `(rocq.theory ...)` (dune 3.21 or newer); the
+  older `(coq.theory ...)` stanza needs `coqc`, which 9.1 lacks. The
+  audit file lives in `.paranoid/`, which dune ignores. Because `rocq
+  compile` stops at the first error, a line that fails (an unknown
+  name) is deleted and the compile is repeated, up to ten times.
+
+Audited theorems: every spec in the head lock file plus every theorem
+declared in a changed proof file, sorted, capped at 200.
+Only theorems of the project's language count. With `--sandbox none` the
+re-check is a skipped check with no finding (as SBX004 does), but a
+missing proof project still gives FV011.
+
+Allowed axioms: Lean `propext`, `Classical.choice`, `Quot.sound`;
+Rocq none. A `.paranoid.toml` `[formal] allowed_axioms` list adds to
+that set. `sorryAx`, `Lean.ofReduceBool`, and `Lean.trustCompiler`
+are never allowed, whatever the policy says.
 
 | Rule | Severity | Detects |
 |---|---|---|
-| FV009 | critical | The proof project does not build in the clean room. |
-| FV010 | high | The kernel reports an axiom outside the allowed set for a locked theorem. Lean allows `propext`, `Classical.choice`, `Quot.sound`; Rocq allows none by default. `sorryAx` and `Lean.ofReduceBool` are never allowed. |
-| FV011 | info | The re-check was asked for but could not run (no toolchain, no runtime, timeout). |
+| FV009 | critical | The proof project does not build in the clean room. Evidence is the first error lines. |
+| FV010 | high | The kernel reports an axiom outside the allowed set for an audited theorem. One finding per theorem and axiom. |
+| FV012 | high | An audited theorem has no kernel answer: Lean printed an error instead of an axioms line, or the Rocq audit line failed and was dropped. One finding per theorem, at its file and line, only when the build succeeded. Evidence is the first audit error line that mentions the theorem, when there is one. |
+| FV011 | info | The re-check was asked for but could not run: no runtime, no proof project at the root, toolchain install failed, or timeout. |
 
 ## Trust boundary, stated plainly
 
@@ -151,3 +202,4 @@ it cannot be fooled by text tricks the static rules miss.
 
 - Phase 0: done (AGENTS.md and roadmap updated).
 - Phase 1: done (FV001 to FV008, CLM006, spec lock file, `paranoid formal lock`, `unlock`, and `status`, fixtures, rules docs, docs site page `formal.html`).
+- Phase 2: done (`verify --formal-check`, `--formal-image`, `--formal-timeout`, FV009 to FV012, `[formal] allowed_axioms` in the policy file, `make formal-live` for the real-container tests). Not run for real: Mathlib projects.

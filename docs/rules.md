@@ -505,6 +505,92 @@ PR as the rule itself; a registry test fails on any rule missing one.
   `code` field. The rule looks at paths, not at what changed inside the
   code.
 
+## FV009: proof project does not build in the clean room
+
+- Severity: critical. Category: formal-verification.
+- What it detects: with `--formal-check`, the proof project at the repo
+  root is rebuilt from a fresh export of the head tree in a container:
+  toolchain and dependencies in a prep step with the network on, then
+  the build with `--network=none`. Lean: `lake build`. Rocq: `dune
+  build` when there is a `dune-project`, otherwise a makefile generated
+  from `_CoqProject`. Fires when that build exits non-zero. The evidence
+  is the first error lines.
+- Why it matters: a proof that only checks on the author's machine is
+  not a proof. Stale build files, uncommitted modules, and cached
+  results can all hide a broken proof. The clean room removes them.
+- Example: a Lean file imports a module that was never committed. It
+  builds in the working tree and fails in the container.
+- Known false positives: a proof project that needs network access
+  during the build fails by design. A project whose toolchain version is
+  not available to the image fails too. A very slow build ends as FV011
+  (timeout), not as this rule.
+
+## FV010: theorem depends on a disallowed axiom
+
+- Severity: high. Category: formal-verification.
+- What it detects: with `--formal-check`, after a successful build,
+  paranoid asks the checker which axioms each audited theorem depends on
+  (Lean `#print axioms`, Rocq `Print Assumptions`). Audited theorems are
+  every spec in the head spec lock file plus every theorem declared in a
+  changed proof file (Lean `private` ones excluded), up to 200. Lean
+  allows `propext`, `Classical.choice`, and `Quot.sound`; Rocq allows
+  nothing. The `[formal] allowed_axioms` list in `.paranoid.toml` adds
+  to that set. `sorryAx`, `Lean.ofReduceBool`, and `Lean.trustCompiler`
+  are never allowed. One finding per theorem and axiom. A Rocq
+  `Admitted` theorem shows up as an axiom named after the theorem.
+- Why it matters: the checker answers this exactly. A `sorry` hidden
+  behind a macro or notation, an added axiom, or a trust-the-compiler
+  tactic all show up here, even when the static rules read nothing wrong
+  in the text.
+- Example: a theorem is proved with a tactic that expands to `sorry`.
+  `#print axioms` reports `sorryAx`.
+- Known false positives: a project that uses an axiom on purpose, such
+  as a classical choice principle beyond the default set, fires until a
+  human adds it to `[formal] allowed_axioms`. A theorem the checker
+  cannot resolve by name gets FV012 instead.
+
+## FV011: proof re-check did not run
+
+- Severity: info. Category: formal-verification.
+- What it detects: `--formal-check` was given but the re-check could not
+  run: no working docker or podman, no proof project at the repo root, a
+  failing toolchain or dependency install, or a timeout. Always
+  surfaced, never silent. With `--sandbox none` the check is listed as
+  skipped without this finding, as long as a proof project exists,
+  because opting out is not a surprise.
+- Why it matters: a skipped re-check is not a passed re-check. The
+  report must say what was not checked.
+- Example: verify runs with `--formal-check` on a machine without
+  docker; the report carries this finding and lists the check as
+  skipped.
+- Known false positives: none; the finding states a fact about coverage
+  and costs no score points.
+
+## FV012: audited theorem has no kernel answer
+
+- Severity: high. Category: formal-verification.
+- What it detects: with `--formal-check`, after a successful build, a
+  theorem that was asked about (every spec in the head lock file plus
+  every theorem declared in a changed proof file) has no parsed answer:
+  Lean printed an error instead of an axioms line, or the Rocq audit
+  line for it failed and was dropped by the retry loop. One finding per
+  theorem, at its file and line. The evidence names the theorem and,
+  when the audit output has an error line that mentions it, that line. A
+  failed build gives only FV009.
+- Why it matters: a theorem the kernel will not talk about is a theorem
+  nobody checked. If a missing answer were ignored, an agent could make
+  a locked or changed theorem unresolvable and pass the audit.
+- Example: a locked spec is renamed in the lock file only; `#print
+  axioms` reports `unknown constant`.
+- Known false positives: theorems the checker cannot find by the name
+  the parser sees fire too, such as names made by macros, or theorems in
+  a Rocq Module Type or functor. Fix the lock name or move the theorem;
+  there is no allow list. Lean `private` declarations are not audited,
+  because they cannot be named from another file; that is safe, since
+  any axiom a private lemma uses also shows up in every public theorem
+  that uses it. Rocq theorems in a Module are printed with their full
+  path, and Section theorems by their plain name.
+
 ## SBX001: test suite fails in the clean room
 
 - Severity: critical. Category: sandbox.

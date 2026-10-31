@@ -209,6 +209,16 @@ func TestFixtures(t *testing.T) {
 					break
 				}
 			}
+			// A formal-check file turns on --formal-check. When it has
+			// content, that text is what the check container prints,
+			// served by a fake runtime, so the FV009 and FV010
+			// fixtures need no docker. Empty means no runtime at all.
+			if raw, readErr := os.ReadFile(filepath.Join(fixture, "formal-check")); readErr == nil { // #nosec G304 -- fixture files owned by this repo
+				in.formalCheck = true
+				if len(raw) > 0 {
+					in.formalRunner = (&fakeProofRuntime{checkOutput: string(raw)}).runner()
+				}
+			}
 			res, runErr := runVerify(context.Background(), in, fixedNow)
 			require.NoError(t, runErr)
 

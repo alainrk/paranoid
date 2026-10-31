@@ -282,3 +282,11 @@ func lastLines(s string, n int) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// NewRunnerWithExec builds a Runner that sends every container command
+// through run instead of a real docker or podman. It exists so other
+// packages' tests can drive the clean-room code paths without a
+// container runtime.
+func NewRunnerWithExec(bin string, run func(ctx context.Context, name string, args ...string) ([]byte, int, error)) *Runner {
+	return newRunner(bin, run)
+}

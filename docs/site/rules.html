@@ -185,7 +185,7 @@
       <a href="#formal-verification">Formal verification</a>
     </div>
     <p>
-      Eight categories, 50 rules. <a href="sessions-claims.html">Claims</a>
+      Eight categories, 55 rules. <a href="sessions-claims.html">Claims</a>
       and <a href="sandbox.html">sandbox</a> have their own pages with
       more context; the full text of every rule in every category is
       below.
@@ -528,7 +528,10 @@
         green result never means the theorem says what you meant. See
         <a href="#spec-lock">the spec lock file</a> for how to pin an
         approved statement. These rules run only when the diff touches a
-        proof file, a proof build file, or the lock file.
+        proof file, a proof build file, or the lock file. FV009 to FV012
+        belong to the opt-in <a href="formal.html#recheck">clean-room
+        re-check</a> (<code>verify --formal-check</code>), which asks
+        the proof checker itself and so does see through macros.
       </p>
     </div>
     <div class="rule" id="FV001">
@@ -586,6 +589,34 @@
       <p><strong>Why it matters:</strong> a theorem is only as useful as the model or code it talks about. An agent can make the code simpler or narrower so the theorem becomes trivial to prove.</p>
       <p><strong>Example:</strong> the lock says <code>internal/parser/parse.go</code> backs <code>Parser.parse_total</code>, and one diff edits both that file and <code>Proofs/Parser.lean</code>.</p>
       <p><strong>Known false positives:</strong> a real fix to the code that needs a matching proof update fires. It only fires for specs that set the optional <code>code</code> field. The rule looks at paths, not at what changed inside the code.</p>
+    </div>
+    <div class="rule" id="FV009">
+      <h3><span class="rule-id">FV009</span> proof project does not build in the clean room <span class="sev-badge sev-critical">critical</span></h3>
+      <p><strong>What it detects:</strong> with <code>--formal-check</code>, the proof project at the repo root is rebuilt from a fresh export of the head tree in a container: toolchain and dependencies in a prep step with the network on, then the build with <code>--network=none</code>. Lean: <code>lake build</code>. Rocq: <code>dune build</code> when there is a <code>dune-project</code>, otherwise a makefile generated from <code>_CoqProject</code>. Fires when that build exits non-zero. The evidence is the first error lines.</p>
+      <p><strong>Why it matters:</strong> a proof that only checks on the author's machine is not a proof. Stale build files, uncommitted modules, and cached results can all hide a broken proof. The clean room removes them.</p>
+      <p><strong>Example:</strong> a Lean file imports a module that was never committed. It builds in the working tree and fails in the container.</p>
+      <p><strong>Known false positives:</strong> a proof project that needs network access during the build fails by design. A project whose toolchain version is not available to the image fails too. A very slow build ends as FV011 (timeout), not as this rule.</p>
+    </div>
+    <div class="rule" id="FV010">
+      <h3><span class="rule-id">FV010</span> theorem depends on a disallowed axiom <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> with <code>--formal-check</code>, after a successful build, paranoid asks the checker which axioms each audited theorem depends on (Lean <code>#print axioms</code>, Rocq <code>Print Assumptions</code>). Audited theorems are every spec in the head spec lock file plus every theorem declared in a changed proof file (Lean <code>private</code> ones excluded), up to 200. Lean allows <code>propext</code>, <code>Classical.choice</code>, and <code>Quot.sound</code>; Rocq allows nothing. The <code>[formal] allowed_axioms</code> list in <code>.paranoid.toml</code> adds to that set. <code>sorryAx</code>, <code>Lean.ofReduceBool</code>, and <code>Lean.trustCompiler</code> are never allowed. One finding per theorem and axiom. A Rocq <code>Admitted</code> theorem shows up as an axiom named after the theorem.</p>
+      <p><strong>Why it matters:</strong> the checker answers this exactly. A <code>sorry</code> hidden behind a macro or notation, an added axiom, or a trust-the-compiler tactic all show up here, even when the static rules read nothing wrong in the text.</p>
+      <p><strong>Example:</strong> a theorem is proved with a tactic that expands to <code>sorry</code>. <code>#print axioms</code> reports <code>sorryAx</code>.</p>
+      <p><strong>Known false positives:</strong> a project that uses an axiom on purpose, such as a classical choice principle beyond the default set, fires until a human adds it to <code>[formal] allowed_axioms</code>. A theorem the checker cannot resolve by name gets FV012 instead.</p>
+    </div>
+    <div class="rule" id="FV011">
+      <h3><span class="rule-id">FV011</span> proof re-check did not run <span class="sev-badge sev-info">info</span></h3>
+      <p><strong>What it detects:</strong> <code>--formal-check</code> was given but the re-check could not run: no working docker or podman, no proof project at the repo root, a failing toolchain or dependency install, or a timeout. Always surfaced, never silent. With <code>--sandbox none</code> the check is listed as skipped without this finding, as long as a proof project exists, because opting out is not a surprise.</p>
+      <p><strong>Why it matters:</strong> a skipped re-check is not a passed re-check. The report must say what was not checked.</p>
+      <p><strong>Example:</strong> verify runs with <code>--formal-check</code> on a machine without docker; the report carries this finding and lists the check as skipped.</p>
+      <p><strong>Known false positives:</strong> none; the finding states a fact about coverage and costs no score points.</p>
+    </div>
+    <div class="rule" id="FV012">
+      <h3><span class="rule-id">FV012</span> audited theorem has no kernel answer <span class="sev-badge sev-high">high</span></h3>
+      <p><strong>What it detects:</strong> with <code>--formal-check</code>, after a successful build, a theorem that was asked about (every spec in the head lock file plus every theorem declared in a changed proof file) has no parsed answer: Lean printed an error instead of an axioms line, or the Rocq audit line for it failed and was dropped by the retry loop. One finding per theorem, at its file and line. The evidence names the theorem and, when the audit output has an error line that mentions it, that line. A failed build gives only FV009.</p>
+      <p><strong>Why it matters:</strong> a theorem the kernel will not talk about is a theorem nobody checked. If a missing answer were ignored, an agent could make a locked or changed theorem unresolvable and pass the audit.</p>
+      <p><strong>Example:</strong> a locked spec is renamed in the lock file only; <code>#print axioms</code> reports <code>unknown constant</code>.</p>
+      <p><strong>Known false positives:</strong> theorems the checker cannot find by the name the parser sees fire too, such as names made by macros, or theorems in a Rocq Module Type or functor. Fix the lock name or move the theorem; there is no allow list. Lean <code>private</code> declarations are not audited, because they cannot be named from another file; that is safe, since any axiom a private lemma uses also shows up in every public theorem that uses it. Rocq theorems in a Module are printed with their full path, and Section theorems by their plain name.</p>
     </div>
 
     <h3 id="spec-lock">The spec lock file</h3>

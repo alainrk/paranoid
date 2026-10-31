@@ -1,9 +1,9 @@
 // Package policy implements the .paranoid.toml team policy file: a
-// fixed set of four keys and nothing else. There is no general config
+// small fixed set of keys and nothing else. There is no general config
 // system here on purpose. A small, hand-written parser handles the
 // file instead of a TOML library: the surface is tiny, and the
 // project's dependency policy (see AGENTS.md) keeps it that way.
-// Adding a fifth key is a deliberate design decision, not a routine
+// Adding a new key is a deliberate design decision, not a routine
 // change.
 package policy
 
@@ -29,6 +29,18 @@ type Disable struct {
 	Expires string
 }
 
+// NeverAllowedAxioms are the axioms no policy may allow. Each one means
+// the kernel did not really check the proof: a hole, or trust in
+// compiled code.
+var NeverAllowedAxioms = []string{"sorryAx", "Lean.ofReduceBool", "Lean.trustCompiler"}
+
+// Formal is the [formal] table.
+type Formal struct {
+	// AllowedAxioms adds to the default allowed set when the opt-in
+	// proof re-check (verify --formal-check) audits axioms.
+	AllowedAxioms []string
+}
+
 // Sandbox pins the container image the sandbox stage uses per
 // language, when the project's own suite detection picked that
 // language. An empty field means no pin; the sandbox stage keeps its
@@ -48,6 +60,7 @@ type File struct {
 	Strict    *bool
 	Disable   []Disable
 	Sandbox   Sandbox
+	Formal    Formal
 }
 
 // Load reads and parses a policy file from disk.
@@ -69,11 +82,12 @@ type section int
 const (
 	sectionTop section = iota
 	sectionSandbox
+	sectionFormal
 	sectionDisable
 )
 
 // Parse reads a policy file's exact bytes. Every deviation from the
-// documented four-key subset (an unknown key, an unknown table, a
+// documented key subset (an unknown key, an unknown table, a
 // wrong type, a [[disable]] entry with no rule or no reason) is a
 // named, loud error; nothing is ever silently dropped or half-parsed.
 func Parse(data []byte) (File, error) {
@@ -81,6 +95,7 @@ func Parse(data []byte) (File, error) {
 	sec := sectionTop
 	var cur *Disable
 	sawSandbox := false
+	sawFormal := false
 	lineNo := 0
 
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
@@ -100,6 +115,15 @@ func Parse(data []byte) (File, error) {
 				f.Disable = append(f.Disable, *cur)
 			}
 			sec, cur = sectionSandbox, nil
+		case line == "[formal]":
+			if sawFormal {
+				return File{}, fmt.Errorf("line %d: [formal] given more than once", lineNo)
+			}
+			sawFormal = true
+			if cur != nil {
+				f.Disable = append(f.Disable, *cur)
+			}
+			sec, cur = sectionFormal, nil
 		case line == "[[disable]]":
 			if cur != nil {
 				f.Disable = append(f.Disable, *cur)
@@ -178,6 +202,15 @@ func assign(f *File, sec section, cur *Disable, key, val string, lineNo int) err
 		default:
 			return fmt.Errorf("line %d: unknown key %q in [sandbox]", lineNo, key)
 		}
+	case sectionFormal:
+		if key != "allowed_axioms" {
+			return fmt.Errorf("line %d: unknown key %q in [formal]", lineNo, key)
+		}
+		list, err := parseStringList(val, lineNo, key)
+		if err != nil {
+			return err
+		}
+		f.Formal.AllowedAxioms = list
 	case sectionDisable:
 		if cur == nil {
 			return fmt.Errorf("line %d: key %q outside of any [[disable]] entry", lineNo, key)
@@ -239,6 +272,64 @@ func parseString(val string, lineNo int, key string) (string, error) {
 		}
 	}
 	return b.String(), nil
+}
+
+// parseStringList reads a one-line array of double-quoted strings, such
+// as ["propext", "Quot.sound"]. Every entry must be a non-empty string.
+// The names sorryAx, Lean.ofReduceBool, and Lean.trustCompiler are
+// rejected, because allowing them would hide a hole from the kernel
+// audit.
+func parseStringList(val string, lineNo int, key string) ([]string, error) {
+	if len(val) < 2 || val[0] != '[' || val[len(val)-1] != ']' {
+		return nil, fmt.Errorf("line %d: %s must be a list of quoted strings on one line, like [\"a\", \"b\"]", lineNo, key)
+	}
+	inner := strings.TrimSpace(val[1 : len(val)-1])
+	var out []string
+	for inner != "" {
+		if inner[0] != '"' {
+			return nil, fmt.Errorf("line %d: %s must be a list of quoted strings", lineNo, key)
+		}
+		end := closingQuote(inner)
+		if end < 0 {
+			return nil, fmt.Errorf("line %d: %s has an unterminated string", lineNo, key)
+		}
+		item, err := parseString(inner[:end+1], lineNo, key)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(item) == "" {
+			return nil, fmt.Errorf("line %d: %s has an empty string", lineNo, key)
+		}
+		for _, bad := range NeverAllowedAxioms {
+			if item == bad {
+				return nil, fmt.Errorf("line %d: %s cannot allow %q; it means the proof is not fully checked", lineNo, key, item)
+			}
+		}
+		out = append(out, item)
+		inner = strings.TrimSpace(inner[end+1:])
+		switch {
+		case inner == "":
+		case inner[0] == ',':
+			inner = strings.TrimSpace(inner[1:])
+		default:
+			return nil, fmt.Errorf("line %d: %s needs a comma between strings", lineNo, key)
+		}
+	}
+	return out, nil
+}
+
+// closingQuote returns the index of the quote that closes the string
+// opened at s[0], honoring backslash escapes, or -1.
+func closingQuote(s string) int {
+	for i := 1; i < len(s); i++ {
+		switch s[i] {
+		case '\\':
+			i++
+		case '"':
+			return i
+		}
+	}
+	return -1
 }
 
 // parseInt reads a bare integer literal.

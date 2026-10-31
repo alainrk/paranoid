@@ -212,11 +212,36 @@
       </p>
     </div>
 
+    <h2 id="proof-projects">Proof projects</h2>
+    <p>
+      The same container mechanics rebuild Lean and Rocq proof
+      projects when you pass <code>verify --formal-check</code>. This
+      is separate from the test-suite run above: it has its own check
+      name (<code>formal-verification/recheck</code>), its own image
+      and timeout flags, and its own rules (FV009 to FV012). It uses
+      the runtime picked by <code>--sandbox</code>; with
+      <code>--sandbox none</code> it is listed as skipped. The full
+      description is on the <a href="formal.html#recheck">formal
+      verification page</a>.
+    </p>
+    <p>Three container runs share one named volume:</p>
+    <ul>
+      <li><strong>Setup</strong> (network off, as root): copies the exported head tree into the volume and makes it writable.</li>
+      <li><strong>Prep</strong> (network on): Lean only. Installs the toolchain and fetches Lake dependencies. Rocq has no prep step.</li>
+      <li><strong>Check</strong> (<code>--network=none</code>): builds the project, then asks the kernel for the axioms of each audited theorem.</li>
+    </ul>
+    <table class="mono">
+      <tr><th>Project</th><th>Detected by</th><th>Default image</th></tr>
+      <tr><td>Lean 4</td><td><code>lean-toolchain</code> plus <code>lakefile.lean</code> or <code>lakefile.toml</code> at the repo root</td><td>debian:bookworm-slim</td></tr>
+      <tr><td>Rocq</td><td><code>_CoqProject</code>, or a <code>dune-project</code> with a Coq or Rocq stanza, at the repo root</td><td>rocq/rocq-prover:9.1</td></tr>
+    </table>
+
     <h2>Limits</h2>
     <ul>
       <li>Coverage is best-effort and never affects the score by itself; only SBX005, and only with <code>--compare-base</code>, does.</li>
       <li>Removing dead code lowers the denominator and can raise or lower the percentage either way; SBX005 is a signal to look, not proof of lost tests.</li>
       <li>Windows sandbox support is out of scope today; it degrades to a skipped check.</li>
+      <li>Proof projects are found at the repo root only. Rocq projects that need extra opam packages are not supported yet, because the check step has no network.</li>
     </ul>
   </main>
 </div>

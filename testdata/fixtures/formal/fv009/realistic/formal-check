@@ -1,0 +1,7 @@
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+PARANOID-BUILD-FAILED
+File "./Bad.v", line 2, characters 22-23:
+Error:
+Syntax error: [ltac_use_default] expected after [tactic] (in [tactic_command]).
+--
+make[1]: *** [Makefile.paranoid:814: Bad.vo] Error 1
