@@ -476,6 +476,60 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       API keys and auth headers are never written. The file is private
       (mode 0600). It holds your code, so do not commit it.
     </p>
+
+    <h2 id="connect">How paranoid-made proofs connect to your code</h2>
+    <p>
+      <strong>Coming with <code>formal prove</code>.</strong> The
+      command does not exist yet. This is the contract it will follow.
+      The building blocks, the hotspot reader and the differential test,
+      are already in the code.
+    </p>
+    <p>
+      A paranoid-made proof is about a Lean model of your function, not
+      about the function. To connect the two, paranoid runs your real
+      function and the Lean model on the same generated inputs and
+      compares the answers.
+    </p>
+    <h3>What a hotspot can be</h3>
+    <p>
+      A hotspot is <code>&lt;file&gt;:&lt;symbol&gt;</code>. v1 takes only
+      a top-level, pure, total function with one return value, on integers,
+      booleans, strings, and lists of those (lists may nest). Anything else
+      is refused with a reason. Go (a <code>(T, error)</code> return is
+      refused), Python (type hints on every parameter and the return), and
+      TS (annotations required, <code>.ts</code> only, Node 22.6 or newer)
+      are supported. Plain <code>.js</code> is refused.
+    </p>
+    <div class="twrap"><table class="mono">
+      <tr><th>Code type</th><th>Lean type</th><th>Notes</th></tr>
+      <tr><td>Go <code>int</code>, <code>int64</code></td><td>Int64</td><td>Wraps on overflow, like Go</td></tr>
+      <tr><td>Go <code>int32</code>, <code>rune</code>, <code>int16</code>, <code>int8</code></td><td>Int32, Int16, Int8</td><td>Wraps</td></tr>
+      <tr><td>Go <code>uint</code>, <code>uint64</code>, <code>uint32</code>, <code>uint16</code>, <code>uint8</code>, <code>byte</code></td><td>UInt64, UInt32, UInt16, UInt8</td><td>Wraps. <code>[]byte</code> is refused</td></tr>
+      <tr><td>Python <code>int</code></td><td>Int</td><td>Unbounded, like Python</td></tr>
+      <tr><td>TS <code>number</code></td><td>Int</td><td>Inputs stay within +-(2^53-1). Floats are out of scope</td></tr>
+      <tr><td><code>bool</code>, <code>boolean</code></td><td>Bool</td><td></td></tr>
+      <tr><td>Go <code>string</code>, Python <code>str</code>, TS <code>string</code></td><td>String</td><td>Inputs are valid UTF-8 only. A Go string can hold invalid UTF-8, which is not tested</td></tr>
+      <tr><td>Go <code>[]T</code>, Python <code>list[T]</code>, TS <code>T[]</code> or <code>Array&lt;T&gt;</code></td><td>Array T</td><td>Nested lists are allowed</td></tr>
+    </table></div>
+    <p>
+      The Lean model must have the exact signature paranoid derives, for
+      example <code>def model (xs : Array Int64) (k : Int64) : Int64</code>,
+      inside the namespace <code>Paranoid.&lt;File&gt;&lt;Symbol&gt;</code>.
+    </p>
+    <h3>The differential test</h3>
+    <ul>
+      <li><strong>Harnesses come from paranoid, not from the LLM.</strong> Both are written from fixed templates and the function signature. For Go, a temporary test file runs in a temp copy of the repo, so unexported functions work. Python runs under <code>python3 -I</code>. TS runs under <code>node --experimental-strip-types</code>. Lean runs <code>lake env lean --run</code> on a generated <code>main</code>. The model can not change how it is called.</li>
+      <li><strong>Inputs.</strong> A seeded generator with a fixed default seed, so the same seed gives the same inputs byte for byte. Edge values come first (0, 1, -1, the minimum and maximum of the type, empty string, "&eacute;", Japanese text, an emoji, empty list, one-element list). Then random values. The default is 1,000 inputs.</li>
+      <li><strong>Compare.</strong> The outputs are compared as canonical JSON, one input at a time. A panic or exception in the real function counts as a failure and names the input. v1 supports total functions only.</li>
+      <li><strong>Programs run.</strong> Only <code>go</code>, <code>python3</code>, <code>node</code>, and <code>lake</code>, each with a timeout. Your tree is copied first and never changed.</li>
+    </ul>
+    <h3>The trust statement</h3>
+    <p>
+      On success the report says: <em>Proved on the Lean model. The model
+      matches the code on N generated inputs.</em> It never says the code
+      is proven. Matching on N inputs is evidence, not proof, and it is
+      only as good as the inputs generated.
+    </p>
   </main>
 </div>
 
