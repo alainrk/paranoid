@@ -528,3 +528,110 @@ func TestInlineAuditSource(t *testing.T) {
 	require.Equal(t, map[string][]string{"a": {"propext"}}, ParseAxioms(KindLean, "'a' depends on axioms: [propext]\n"))
 	require.Equal(t, map[string][]string{"a": {}}, ParseAxioms(KindRocq, "PARANOID-BEGIN a\nClosed under the global context\n"))
 }
+
+func TestDetectProofFormalFolder(t *testing.T) {
+	lake := map[string]string{"lean-toolchain": "leanprover/lean4:v4.24.0\n", "lakefile.toml": "name = \"f\"\n"}
+	withPrefix := func(prefix string, files map[string]string) map[string]string {
+		out := map[string]string{}
+		for k, v := range files {
+			out[prefix+k] = v
+		}
+		return out
+	}
+	merge := func(ms ...map[string]string) map[string]string {
+		out := map[string]string{}
+		for _, m := range ms {
+			for k, v := range m {
+				out[k] = v
+			}
+		}
+		return out
+	}
+
+	t.Run("found in formal/", func(t *testing.T) {
+		p, reason, ok := DetectProof(writeTree(t, withPrefix("formal/", lake)))
+		require.True(t, ok, reason)
+		require.Equal(t, KindLean, p.Kind)
+		require.Equal(t, "formal", p.Dir)
+		require.Equal(t, "leanprover/lean4:v4.24.0", p.Toolchain)
+	})
+	t.Run("the root wins", func(t *testing.T) {
+		root := map[string]string{"lean-toolchain": "leanprover/lean4:v4.15.0\n", "lakefile.toml": "name = \"r\"\n"}
+		p, _, ok := DetectProof(writeTree(t, merge(root, withPrefix("formal/", lake))))
+		require.True(t, ok)
+		require.Empty(t, p.Dir)
+		require.Equal(t, "leanprover/lean4:v4.15.0", p.Toolchain)
+	})
+	t.Run("a Rocq project at the root wins too", func(t *testing.T) {
+		p, _, ok := DetectProof(writeTree(t, merge(map[string]string{"_CoqProject": "-Q . D\n"}, withPrefix("formal/", lake))))
+		require.True(t, ok)
+		require.Equal(t, KindRocq, p.Kind)
+		require.Empty(t, p.Dir)
+	})
+	t.Run("needs both files", func(t *testing.T) {
+		_, reason, ok := DetectProof(writeTree(t, map[string]string{"formal/lakefile.toml": "name = \"f\"\n"}))
+		require.False(t, ok)
+		require.Contains(t, reason, "no proof project at the repo root or in formal/")
+	})
+	t.Run("bad toolchain text is reported", func(t *testing.T) {
+		_, reason, ok := DetectProof(writeTree(t, map[string]string{"formal/lean-toolchain": "x'; rm\n", "formal/lakefile.toml": ""}))
+		require.False(t, ok)
+		require.Contains(t, reason, "unsupported value")
+	})
+}
+
+func TestLeanModuleInFormalFolder(t *testing.T) {
+	p := ProofProject{Kind: KindLean, Dir: "formal"}
+	got, ok := p.LeanModule("formal/Formal/Paranoid/UtilAdd.lean")
+	require.True(t, ok)
+	require.Equal(t, "Formal.Paranoid.UtilAdd", got)
+	_, ok = p.LeanModule("Proofs/A.lean")
+	require.False(t, ok, "a file outside the project folder has no module")
+	p.SrcDirs = []string{"lean"}
+	got, ok = p.LeanModule("formal/lean/Formal/X.lean")
+	require.True(t, ok)
+	require.Equal(t, "Formal.X", got)
+}
+
+func TestLeanPlanInFormalFolder(t *testing.T) {
+	targets := []AuditTarget{{Name: "Paranoid.UtilAdd.t", File: "formal/Formal/Paranoid/UtilAdd.lean"}}
+	sub := ProofProject{Kind: KindLean, Image: leanImage, Toolchain: "leanprover/lean4:v4.24.0", Dir: "formal"}.BuildPlan(targets)
+	require.Equal(t, "import Formal.Paranoid.UtilAdd\n#print axioms Paranoid.UtilAdd.t\n", sub.AuditSource)
+	require.Contains(t, sub.Prep, "cd /work/formal\nlake resolve-deps\n")
+	require.True(t, strings.HasPrefix(sub.Check, "cd /work/formal\n"), sub.Check)
+	require.Contains(t, sub.Check, "lake build Formal.Paranoid.UtilAdd")
+	require.Contains(t, sub.Check, "lake env lean /work/.paranoid/axioms_audit.lean")
+	require.Equal(t, sub.Requested, targets)
+
+	// A root project keeps the old scripts.
+	root := ProofProject{Kind: KindLean, Image: leanImage, Toolchain: "leanprover/lean4:v4.24.0"}.BuildPlan(nil)
+	require.True(t, strings.HasPrefix(root.Check, "cd /work\n"))
+	require.Contains(t, root.Check, "lake env lean .paranoid/axioms_audit.lean")
+	require.Contains(t, root.Prep, "cd /work\nlake resolve-deps\n")
+
+	// A folder name that is not plain never reaches the script.
+	evil := ProofProject{Kind: KindLean, Dir: "a;rm"}.BuildPlan(nil)
+	require.True(t, strings.HasPrefix(evil.Check, "cd /work\n"))
+}
+
+func TestRunProofInFormalFolder(t *testing.T) {
+	dir := writeTree(t, map[string]string{"formal/lean-toolchain": "leanprover/lean4:v4.24.0\n", "formal/lakefile.toml": ""})
+	p, _, ok := DetectProof(dir)
+	require.True(t, ok)
+	rt := &scriptedRuntime{check: fakeResponse{output: markBuildOK + "\n" + markAudit + "\n'Paranoid.X.t' does not depend on any axioms\n"}}
+	res, err := newRunner("docker", rt.run).RunProof(context.Background(), dir, p,
+		[]AuditTarget{{Name: "Paranoid.X.t", File: "formal/Formal/Paranoid/X.lean"}}, time.Minute)
+	require.NoError(t, err)
+	require.True(t, res.Ran)
+	require.Len(t, res.Theorems, 1)
+	src, err := os.ReadFile(filepath.Join(dir, ".paranoid", "axioms_audit.lean"))
+	require.NoError(t, err)
+	require.Equal(t, "import Formal.Paranoid.X\n#print axioms Paranoid.X.t\n", string(src))
+	var check string
+	for _, c := range rt.calls {
+		if strings.HasPrefix(c, "docker run") && strings.Contains(c, "-fcheck") {
+			check = c
+		}
+	}
+	require.Contains(t, check, "cd /work/formal")
+}

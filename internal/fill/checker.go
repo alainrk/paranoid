@@ -69,8 +69,12 @@ type ToolChecker struct {
 }
 
 // NewToolChecker builds a checker for a detected proof project. root is
-// the project root, where the checker runs.
+// the repo root. The checker runs in the project folder, which is the
+// repo root itself or a folder below it such as formal/.
 func NewToolChecker(p sandbox.ProofProject, root string) *ToolChecker {
+	if p.Dir != "" {
+		root = filepath.Join(root, filepath.FromSlash(p.Dir))
+	}
 	return &ToolChecker{kind: p.Kind, root: root, dirs: p.Dirs}
 }
 

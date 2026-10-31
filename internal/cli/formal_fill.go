@@ -63,7 +63,7 @@ func newFormalFillCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fill [path or name...]",
 		Short: "Ask a model to fill proof holes, behind a strict gate (online)",
-		Long: "Fill proof holes (sorry, admit, Admitted) in the Lean or Rocq project at the repo root. " +
+		Long: "Fill proof holes (sorry, admit, Admitted) in the Lean or Rocq project at the repo root, or the Lean project in formal/. " +
 			"This is an online command: it sends the proof file to the configured provider (task \"proof\"). " +
 			"An answer is accepted only when the local checker passes, the statement and every other declaration are unchanged, " +
 			"the static rules FV001, FV002, and FV006 find nothing new, and the kernel axiom audit shows only allowed axioms. " +
@@ -107,7 +107,7 @@ func runFormalFill(ctx context.Context, out io.Writer, o fillOptions, deps fillD
 	root := repo.Root()
 	project, reason, ok := sandbox.DetectProof(root)
 	if !ok {
-		return fmt.Errorf("formal fill needs a Lean or Rocq project at the repo root: %s", reason)
+		return fmt.Errorf("formal fill needs a Lean or Rocq project at the repo root (or a Lean project in formal/): %s", reason)
 	}
 	lang := fparse.LangLean
 	if project.Kind == sandbox.KindRocq {
@@ -255,7 +255,7 @@ func collectFillFiles(ctx context.Context, repo *gitx.Repo, lang fparse.Lang, ar
 	for _, arg := range args {
 		if l := fparse.LangOf(arg); l != fparse.LangNone {
 			if l != lang {
-				return nil, fmt.Errorf("%s is a %s file, but the project at the repo root is %s", arg, l, lang)
+				return nil, fmt.Errorf("%s is a %s file, but the proof project is %s", arg, l, lang)
 			}
 			rel, err := repoRelPath(repo.Root(), arg)
 			if err != nil {

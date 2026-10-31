@@ -89,3 +89,12 @@ func TestRealExecRefusesOtherPrograms(t *testing.T) {
 		require.Equal(t, -1, code)
 	}
 }
+
+func TestToolCheckerRunsInTheProjectFolder(t *testing.T) {
+	var calls []execCall
+	c := NewToolChecker(sandbox.ProofProject{Kind: sandbox.KindLean, Dir: "formal"}, "/repo")
+	c.Exec = fakeExec(&calls, "ok", 0)
+	_, _, err := c.Check(context.Background(), "/tmp/x/A.lean")
+	require.NoError(t, err)
+	require.Equal(t, []execCall{{"/repo/formal", "lake", []string{"env", "lean", "/tmp/x/A.lean"}}}, calls)
+}

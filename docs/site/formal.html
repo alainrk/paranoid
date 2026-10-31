@@ -269,9 +269,14 @@
     </p>
 
     <h3>Which project is rebuilt</h3>
-    <p>Only a project at the repo root is found.</p>
+    <p>
+      A project at the repo root is found first. If the root has none, a
+      Lean project in the <code>formal/</code> folder is found (the
+      folder <a href="#prove"><code>formal prove</code></a> creates). A
+      Rocq project is found only at the root.
+    </p>
     <ul>
-      <li><strong>Lean:</strong> <code>lean-toolchain</code> plus <code>lakefile.lean</code> or <code>lakefile.toml</code>. Image <code>debian:bookworm-slim</code>. With the network on, the prep step installs the toolchain named in <code>lean-toolchain</code> and fetches the Lake dependencies. For Mathlib it also runs <code>lake exe cache get</code>. With the network off, the check step runs <code>lake build</code>, then <code>#print axioms</code> on a generated file.</li>
+      <li><strong>Lean:</strong> <code>lean-toolchain</code> plus <code>lakefile.lean</code> or <code>lakefile.toml</code>, at the root or in <code>formal/</code>. For <code>formal/</code> the container builds from that folder. Image <code>debian:bookworm-slim</code>. With the network on, the prep step installs the toolchain named in <code>lean-toolchain</code> and fetches the Lake dependencies. For Mathlib it also runs <code>lake exe cache get</code>. With the network off, the check step runs <code>lake build</code>, then <code>#print axioms</code> on a generated file.</li>
       <li><strong>Rocq:</strong> <code>_CoqProject</code>, or a <code>dune-project</code> with a Coq or Rocq stanza. Image <code>rocq/rocq-prover:9.1</code>. With the network off, the check step builds with <code>dune build</code> when there is a <code>dune-project</code>, otherwise from a makefile generated from <code>_CoqProject</code>. Then it runs <code>Print Assumptions</code> on a generated file. Both the <code>rocq</code> command and the older <code>coq_makefile</code> and <code>coqc</code> are handled.</li>
     </ul>
 
@@ -328,9 +333,9 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     <h2 id="online">Online features and providers</h2>
     <p>
       Some <code>paranoid formal</code> subcommands will call an LLM.
-      <code>fill</code> is in this build (see below). <code>prove</code>
-      is planned. Both use the same provider clients, settings, caps,
-      and request log.
+      <code>fill</code> and <code>prove</code> are in this build (see
+      below). Both use the same provider clients, settings, caps, and
+      request log.
     </p>
     <div class="card">
       <p>
@@ -367,7 +372,7 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     <p>
       Fills proof holes (<code>sorry</code>, <code>admit</code>,
       <code>Admitted</code>) in the Lean or Rocq project at the repo
-      root. With no arguments it tries every hole in the tracked proof
+      root, or the Lean project in <code>formal/</code>. With no arguments it tries every hole in the tracked proof
       files of that language. An argument that ends in
       <code>.lean</code> or <code>.v</code> is a file (all its holes).
       Any other argument is the qualified name of one theorem or lemma.
@@ -396,7 +401,7 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     <h4>The gate</h4>
     <p>An answer is accepted only when all of these hold. It is spliced into a scratch copy, and only the proof span changes.</p>
     <ul>
-      <li>The local checker exits 0 (Lean: <code>lake env lean</code> from the project root; Rocq: <code>rocq compile</code> or <code>coqc</code> with the <code>-Q</code> and <code>-R</code> flags of <code>_CoqProject</code>).</li>
+      <li>The local checker exits 0 (Lean: <code>lake env lean</code> from the project folder; Rocq: <code>rocq compile</code> or <code>coqc</code> with the <code>-Q</code> and <code>-R</code> flags of <code>_CoqProject</code>).</li>
       <li>A re-parse shows the same declarations, the same statement hash for the target, and unchanged text for every other declaration. No extra command follows the proof, and the new proof has no hole or escape.</li>
       <li>The static rules FV001, FV002, and FV006 find nothing new, comparing the original file with the candidate.</li>
       <li>A kernel axiom audit of the target, run in the scratch copy, gives an answer and lists only allowed axioms (the same set as the re-check, including the policy <code>[formal] allowed_axioms</code> list; <code>sorryAx</code> is never allowed).</li>
@@ -417,6 +422,104 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       must be installed. If it is not, the command stops with a message.
       <code>paranoid verify --formal-check</code> stays the final word:
       it rebuilds the project in a clean container.
+    </p>
+
+    <h3 id="prove">paranoid formal prove</h3>
+    <pre><code>paranoid formal prove &lt;file&gt;:&lt;symbol&gt;... [--continue] [--attempts N] [--cases N] [--seed N]
+                     [--lean-toolchain T] [--force] [--provider P] [--model M] [--base-url URL]
+                     [--max-requests N] [--max-tokens N] [--timeout D]</code></pre>
+    <p>
+      Builds a proof about a function in Go, Python, or TypeScript. It
+      works in two steps with a person in between. Each hotspot is
+      <code>&lt;file&gt;:&lt;symbol&gt;</code>; the rules for what a
+      hotspot can be are <a href="#connect">below</a>. An unsupported
+      hotspot is printed as <code>refused</code> with the reason, and the
+      run ends with exit 3 once the others are done.
+    </p>
+    <table class="mono">
+      <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td>--continue</td><td>off</td><td>Prove the locked theorems of a reviewed draft (step 2)</td></tr>
+      <tr><td>--attempts</td><td>5</td><td>Draft: most drafts per hotspot. Continue: most tries per theorem</td></tr>
+      <tr><td>--cases</td><td>1000</td><td>Generated inputs for the differential test</td></tr>
+      <tr><td>--seed</td><td>fixed</td><td>Seed for the input generator</td></tr>
+      <tr><td>--lean-toolchain</td><td>see below</td><td>Toolchain for a new <code>formal/</code> project. Ignored when a project exists</td></tr>
+      <tr><td>--force</td><td>off</td><td>Overwrite an existing model file</td></tr>
+      <tr><td>--provider, --model, --base-url</td><td>from settings</td><td>Override the settings for the task (<code>spec</code> for the draft, <code>proof</code> for <code>--continue</code>)</td></tr>
+      <tr><td>--max-requests, --max-tokens, --timeout</td><td>100, 2,000,000, 60m</td><td>The run caps, for the whole run</td></tr>
+    </table>
+
+    <h4>Step 1: draft (the default)</h4>
+    <ol>
+      <li><strong>Extract.</strong> Each hotspot is read and its span is printed (path, line range, and the signature) so you can check the boundaries.</li>
+      <li><strong>Lake project.</strong> The Lean project at the repo root is used if there is one. Otherwise <code>formal/</code> is created with <code>lakefile.toml</code> (a <code>lean_lib</code> named <code>Formal</code>), <code>lean-toolchain</code>, and a <code>.gitignore</code> for <code>.lake/</code>. The toolchain is <code>--lean-toolchain</code>, else the repo's own <code>lean-toolchain</code>, else <code>leanprover/lean4:v4.24.0</code>. A project that exists is never rewritten. A root project must have a library named <code>Formal</code>. The models use the Int8 to Int64 and UInt8 to UInt64 types, which need a recent Lean.</li>
+      <li><strong>Ask.</strong> The <code>spec</code> provider is asked for one fenced Lean block: <code>namespace Paranoid.&lt;File&gt;&lt;Symbol&gt;</code>, a <code>def model</code> with exactly the signature paranoid derives, and two to five theorems about <code>model</code>. Each theorem has a doc comment with one plain-English sentence and a proof of exactly <code>by sorry</code>. The prompt explains the type rules (fixed-width integers wrap like the source language, Python integers do not, how division and strings behave) and forbids axioms and escape hatches.</li>
+      <li><strong>Validate.</strong> The block is checked before anything is built. It must parse. The model signature must match after whitespace is normalized. The model and any helper before the first theorem must have no hole. Every theorem must mention <code>model</code>. The rule marks FV002 (axioms and escapes) and FV006 (checker switches) must find nothing, and so must a short list of other commands (macros, notation, <code>set_option</code>, attributes, <code>#</code> commands, <code>partial</code>, <code>opaque</code>). Nothing may sit outside the namespace except <code>import</code> lines. A rejected answer is sent back with the reason.</li>
+      <li><strong>Write.</strong> The file goes to <code>Formal/Paranoid/&lt;File&gt;&lt;Symbol&gt;.lean</code> under the Lake root. An existing file is not overwritten unless you pass <code>--force</code>.</li>
+      <li><strong>Build and compare.</strong> <code>lake build</code> builds the module (the <code>sorry</code> warnings are fine). Then the <a href="#differential-test">differential test</a> runs. On a build error, or a mismatch, the errors or the first differing inputs go back to the model for another draft, up to <code>--attempts</code>. <strong>The model has to match the code before you review anything.</strong> If no draft matches, the file is removed and nothing is kept.</li>
+      <li><strong>Print.</strong> The candidate specs are printed with the theorem name, its English line, and its Lean statement, then the exact next steps: read the file, <code>git add</code> it, run <code>paranoid formal lock &lt;names&gt; --code &lt;hotspot file&gt;</code>, then <code>paranoid formal prove --continue &lt;file&gt;:&lt;symbol&gt;</code>. (<code>lock</code> and <code>fill</code> read tracked files, so the model file must be added first.)</li>
+    </ol>
+    <p>
+      The draft step proves nothing. It only checks that the model
+      agrees with the code on the generated inputs, and gives you
+      statements to read.
+    </p>
+
+    <h4>Step 2: <code>--continue</code></h4>
+    <ol>
+      <li><strong>Find the locked specs.</strong> Only specs whose <code>file</code> is the hotspot's model file and whose <code>code</code> is the hotspot's source file count. With none, the command refuses (exit 3): a person has to approve first. An unlocked theorem is never sent to the model. If a locked statement changed since it was locked, or the model file no longer has the required signature, the command stops with exit 3 before any call.</li>
+      <li><strong>Fill.</strong> The same loop and the same gate as <a href="#fill"><code>formal fill</code></a> (task <code>proof</code>), on the locked theorems that still have a hole.</li>
+      <li><strong>Audit.</strong> The kernel axiom audit is run on every locked theorem in the final file, including ones that already had a proof. Each must give an answer with allowed axioms only.</li>
+      <li><strong>Rebuild and compare.</strong> The module is rebuilt and the differential test runs again. The model must still match the code.</li>
+    </ol>
+    <p>The last line is one of these:</p>
+    <pre><code>Proved on the Lean model. The model matches the code on N generated inputs.</code></pre>
+    <p>
+      It is printed only when every locked theorem was filled or already
+      proved and passed the audit, the model builds, and the differential
+      test passed. Otherwise the last line starts with
+      <code>Not proved.</code> and says what is missing: which theorems
+      are not proved, or how many inputs differ. The code is never
+      called proven.
+    </p>
+
+    <h4>What is sent</h4>
+    <p>
+      Before the first call the command prints the provider, the model,
+      and what will be sent. The draft step sends, for each hotspot, the
+      function source (the extracted span only, not the file), its
+      language, and the required Lean signature. On a retry it also
+      sends the model's own last answer and the build errors or the
+      first differing inputs. No other file is sent. The
+      <code>--continue</code> step sends the whole model file, once for
+      each theorem it tries, plus the latest checker output on a retry.
+      Every call goes through the same logged client as
+      <code>fill</code>, so the <a href="#online">request log</a> shows
+      exactly what left your machine.
+    </p>
+
+    <h4>Exit codes</h4>
+    <table class="mono">
+      <tr><th>Code</th><th>Meaning</th></tr>
+      <tr><td>0</td><td>Draft: every hotspot has a model that matches the code. Continue: every locked theorem is proved and the model still matches</td></tr>
+      <tr><td>2</td><td>Draft: no matching model within <code>--attempts</code> (or a cap stopped the run). Continue: something is not proved, the model does not build, or it differs from the code</td></tr>
+      <tr><td>3</td><td>An error: no key, a provider error, a refused hotspot, an existing model file without <code>--force</code>, no locked specs, a drifted lock, no toolchain. When several hotspots end differently, 3 wins over 2, and 2 over 0</td></tr>
+    </table>
+    <p>
+      <strong>Needs a local toolchain.</strong> Like <code>fill</code>,
+      the checker runs on your machine, so <code>lake</code> must be
+      installed, and so must <code>go</code>, <code>python3</code>, or
+      <code>node</code> for the language of the hotspot. Only those four
+      programs are run, each with a timeout. If the project's Lean
+      toolchain is not installed, <code>elan</code> may download it the
+      first time <code>lake</code> runs. paranoid itself makes no
+      network call except the provider calls.
+    </p>
+    <p>
+      <strong>What this proves.</strong> A finished run proves the
+      locked theorems about the Lean model, and shows the model and the
+      code agree on the generated inputs. It does not prove the code
+      correct, and it does not prove the theorems say what you meant.
+      That is why a person reads and locks them first.
     </p>
 
     <h3>Providers</h3>
@@ -479,10 +582,9 @@ allowed_axioms = ["Classical.choice"]</code></pre>
 
     <h2 id="connect">How paranoid-made proofs connect to your code</h2>
     <p>
-      <strong>Coming with <code>formal prove</code>.</strong> The
-      command does not exist yet. This is the contract it will follow.
-      The building blocks, the hotspot reader and the differential test,
-      are already in the code.
+      This is the contract <a href="#prove"><code>paranoid formal prove</code></a>
+      follows: what a hotspot can be, how the model is compared with
+      your code, and what the report may claim.
     </p>
     <p>
       A paranoid-made proof is about a Lean model of your function, not
@@ -516,7 +618,7 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       example <code>def model (xs : Array Int64) (k : Int64) : Int64</code>,
       inside the namespace <code>Paranoid.&lt;File&gt;&lt;Symbol&gt;</code>.
     </p>
-    <h3>The differential test</h3>
+    <h3 id="differential-test">The differential test</h3>
     <ul>
       <li><strong>Harnesses come from paranoid, not from the LLM.</strong> Both are written from fixed templates and the function signature. For Go, a temporary test file runs in a temp copy of the repo, so unexported functions work. Python runs under <code>python3 -I</code>. TS runs under <code>node --experimental-strip-types</code>. Lean runs <code>lake env lean --run</code> on a generated <code>main</code>. The model can not change how it is called.</li>
       <li><strong>Inputs.</strong> A seeded generator with a fixed default seed, so the same seed gives the same inputs byte for byte. Edge values come first (0, 1, -1, the minimum and maximum of the type, empty string, "&eacute;", Japanese text, an emoji, empty list, one-element list). Then random values. The default is 1,000 inputs.</li>
@@ -525,7 +627,7 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     </ul>
     <h3>The trust statement</h3>
     <p>
-      On success the report says: <em>Proved on the Lean model. The model
+      On success the last line of <code>formal prove --continue</code> says: <em>Proved on the Lean model. The model
       matches the code on N generated inputs.</em> It never says the code
       is proven. Matching on N inputs is evidence, not proof, and it is
       only as good as the inputs generated.
