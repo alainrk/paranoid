@@ -17,7 +17,20 @@ type Decl struct {
 	// Private is true for a Lean declaration marked private. It cannot
 	// be named from another file.
 	Private bool
+	// Start is the byte offset of the keyword in the source.
+	Start int
+	// ProofStart and ProofEnd are byte offsets into the source that
+	// bracket the proof. Lean: from just after the top-level ":=" to the
+	// end of the last code token before the next command. Rocq: from the
+	// first sentence after the statement through the closing "Qed.",
+	// "Defined.", "Admitted.", or "Abort.". Both are 0 when the parser
+	// found no such span (for example a Lean declaration written with
+	// "where" or "|" alternatives, or a Rocq proof with no terminator).
+	ProofStart, ProofEnd int
 }
+
+// HasProofSpan reports whether the parser found the proof span.
+func (d Decl) HasProofSpan() bool { return d.ProofEnd > d.ProofStart && d.ProofStart > 0 }
 
 // Normalize collapses every run of whitespace to one space and trims. The
 // input is already blanked.
@@ -264,6 +277,44 @@ func leanStatementEnd(b []byte, start int) int {
 	return n
 }
 
+// leanIndent returns the column of the start of the declaration chain
+// (attributes and modifiers) that holds the keyword at p.
+func leanIndent(b []byte, p int) int {
+	q, ok := leanDeclChain(b, p)
+	if !ok {
+		q = p
+	}
+	col := 0
+	for i := q - 1; i >= 0 && b[i] != '\n'; i-- {
+		col++
+	}
+	return col
+}
+
+// leanProofEnd returns where the proof that starts at start ends: the
+// end of the last code byte before the next command. A command is a
+// command word at the start of a line, indented no more than the
+// declaration. Trailing blanks and comments are not part of the proof.
+func leanProofEnd(b []byte, start, indent int) int {
+	n := len(b)
+	limit := n
+	for i := start; i < n; i++ {
+		if b[i] != '\n' {
+			continue
+		}
+		j := skipSpaceNoNewline(b, i+1)
+		if j < n && j-(i+1) <= indent && startsLeanCommand(b[j:]) {
+			limit = i
+			break
+		}
+	}
+	end := limit
+	for end > start && isSpaceByte(b[end-1]) {
+		end--
+	}
+	return end
+}
+
 func leanDecls(src []byte) []Decl {
 	b := Blank(LangLean, src)
 	keep := blankComments(LangLean, src)
@@ -311,8 +362,14 @@ func leanDecls(src []byte) []Decl {
 		} else {
 			name = joinScope(stack, name)
 		}
-		stmt := Normalize(string(keep[end:leanStatementEnd(b, end)]))
-		out = append(out, Decl{Name: name, Kind: c.tok, Line: li.line(c.off), Statement: stmt, Private: leanIsPrivate(b, c.off)})
+		stmtEnd := leanStatementEnd(b, end)
+		stmt := Normalize(string(keep[end:stmtEnd]))
+		d := Decl{Name: name, Kind: c.tok, Line: li.line(c.off), Statement: stmt, Private: leanIsPrivate(b, c.off), Start: c.off}
+		if stmtEnd+1 < len(b) && b[stmtEnd] == ':' && b[stmtEnd+1] == '=' {
+			d.ProofStart = stmtEnd + 2
+			d.ProofEnd = leanProofEnd(b, d.ProofStart, leanIndent(b, c.off))
+		}
+		out = append(out, d)
 	}
 	return out
 }
@@ -387,13 +444,55 @@ type rocqScope struct {
 	name    string
 }
 
+// rocqTerminators end a Rocq proof.
+var rocqTerminators = map[string]bool{
+	"Qed": true, "Defined": true, "Admitted": true, "Abort": true,
+}
+
+// rocqStarters begin a new top-level item. Meeting one before a
+// terminator means the declaration has no proof block to replace.
+var rocqStarters = map[string]bool{
+	"Definition": true, "Fixpoint": true, "CoFixpoint": true, "Inductive": true,
+	"CoInductive": true, "Record": true, "Structure": true, "Class": true,
+	"Instance": true, "Module": true, "Section": true, "End": true,
+	"Require": true, "Notation": true, "Example": true, "Axiom": true,
+	"Variable": true, "Variables": true, "Hypothesis": true, "Ltac": true,
+	"Parameter": true, "Conjecture": true,
+}
+
+// rocqProofSpan finds the proof of the declaration whose statement is
+// sentence si: from the next sentence through its terminator. It
+// returns 0, 0 when there is none.
+func rocqProofSpan(b []byte, sentences []span, si int) (int, int) {
+	if si+1 >= len(sentences) {
+		return 0, 0
+	}
+	start := sentences[si+1].start
+	for k := si + 1; k < len(sentences); k++ {
+		sp := sentences[k]
+		w, _, _ := rocqLead(b[:sp.end], sp)
+		if rocqTerminators[w] {
+			end := sp.end
+			if end < len(b) && b[end] == '.' {
+				end++
+			}
+			return start, end
+		}
+		if rocqStarters[w] || rocqKeywords[w] {
+			return 0, 0
+		}
+	}
+	return 0, 0
+}
+
 func rocqDecls(src []byte) []Decl {
 	b := Blank(LangRocq, src)
 	keep := blankComments(LangRocq, src)
 	li := newLineIndex(b)
 	var stack []rocqScope
 	var out []Decl
-	for _, sp := range rocqSentences(b) {
+	sentences := rocqSentences(b)
+	for si, sp := range sentences {
 		sb := b[:sp.end]
 		w, off, end := rocqLead(sb, sp)
 		switch {
@@ -427,12 +526,15 @@ func rocqDecls(src []byte) []Decl {
 					parts = append(parts, s.name)
 				}
 			}
-			out = append(out, Decl{
+			d := Decl{
 				Name:      joinScope(parts, name),
 				Kind:      w,
 				Line:      li.line(off),
 				Statement: Normalize(string(keep[e:sp.end])),
-			})
+				Start:     off,
+			}
+			d.ProofStart, d.ProofEnd = rocqProofSpan(b, sentences, si)
+			out = append(out, d)
 		}
 	}
 	return out
