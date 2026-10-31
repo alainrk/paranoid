@@ -43,7 +43,11 @@ func runFormalRecheckStage(ctx context.Context, repo *gitx.Repo, in verifyInput,
 	}
 	// An injected runner (tests and fixtures) wins over --sandbox none.
 	if sandbox.Mode(in.sandboxMode) == sandbox.ModeNone && in.formalRunner == nil {
-		return formalOutcome{skipped: &finding.SkippedCheck{Name: checkFormalRecheck, Reason: "disabled with --sandbox none"}}
+		const reason = "disabled with --sandbox none"
+		return formalOutcome{
+			skipped: &finding.SkippedCheck{Name: checkFormalRecheck, Reason: reason},
+			recheck: finding.ProofsRecheck{Reason: reason},
+		}
 	}
 	runner := in.formalRunner
 	if runner == nil {
@@ -83,7 +87,38 @@ func runFormalRecheckStage(ctx context.Context, repo *gitx.Repo, in verifyInput,
 			Name: t.Name, File: t.File, Line: lines[t.File+"\x00"+t.Name], Axioms: t.Axioms,
 		})
 	}
-	return formalOutcome{findings: analyzeformal.AnalyzeRecheck(input), ran: true}
+	return formalOutcome{
+		findings: analyzeformal.AnalyzeRecheck(input),
+		ran:      true,
+		recheck:  summarizeRecheck(input),
+	}
+}
+
+// summarizeRecheck counts the re-check results for the Proofs block.
+// A failed build audits nothing.
+func summarizeRecheck(in analyzeformal.RecheckInput) finding.ProofsRecheck {
+	out := finding.ProofsRecheck{Ran: true, BuildOK: in.BuildOK}
+	if !in.BuildOK {
+		return out
+	}
+	allowed := analyzeformal.AllowedAxioms(in.Kind, in.Extra)
+	answered := map[string]bool{}
+	for _, t := range in.Theorems {
+		answered[t.File+"\x00"+t.Name] = true
+		for _, ax := range t.Axioms {
+			if !allowed[ax] {
+				out.DisallowedAxioms++
+				break
+			}
+		}
+	}
+	out.Audited = len(in.Theorems)
+	for _, t := range in.Requested {
+		if !answered[t.File+"\x00"+t.Name] {
+			out.NoAnswer++
+		}
+	}
+	return out
 }
 
 // formalNotRun builds the outcome for a re-check that could not run: an
@@ -92,6 +127,7 @@ func formalNotRun(reason string) formalOutcome {
 	return formalOutcome{
 		findings: []finding.Finding{analyzeformal.RecheckNotRun(reason)},
 		skipped:  &finding.SkippedCheck{Name: checkFormalRecheck, Reason: reason},
+		recheck:  finding.ProofsRecheck{Reason: reason},
 	}
 }
 

@@ -229,7 +229,10 @@ func (r *Runner) fillOne(ctx context.Context, file string, src []byte, d fparse.
 	if attempts <= 0 {
 		attempts = DefaultAttempts
 	}
-	var prevProof, prevErr string
+	// prevProof and prevErr feed the next prompt. lastProof and lastErr
+	// keep the latest rejected proof, so an unreadable answer does not
+	// wipe the checker output the model needs.
+	var prevProof, prevErr, lastProof, lastErr string
 	for n := 1; n <= attempts; n++ {
 		if ctx.Err() != nil {
 			note, _ := capNote(ctx, nil)
@@ -238,7 +241,7 @@ func (r *Runner) fillOne(ctx context.Context, file string, src []byte, d fparse.
 			return res, nil, nil
 		}
 		resp, err := r.Provider.Complete(ctx, llm.Request{
-			System:   SystemPrompt(lang),
+			System:   SystemPrompt(lang) + ProjectNote(r.Project),
 			Messages: []llm.Message{{Role: "user", Text: Prompt(lang, file, src, d, prevProof, prevErr)}},
 		})
 		res.Attempts = n
@@ -250,10 +253,13 @@ func (r *Runner) fillOne(ctx context.Context, file string, src []byte, d fparse.
 			}
 			return res, nil, fmt.Errorf("asking the model about %s: %w", d.Name, err)
 		}
-		block, perr := ParseAnswer(resp.Text)
+		block, perr := ParseReply(resp)
 		if perr != nil {
-			prevProof, prevErr = "", perr.Error()
-			res.Detail = prevErr
+			res.Detail = perr.Error()
+			prevProof, prevErr = lastProof, perr.Error()
+			if lastErr != "" {
+				prevErr = "Your last answer could not be used: " + perr.Error() + ".\nThe attempt before it was rejected with:\n" + lastErr
+			}
 			continue
 		}
 		cand, rej, err := r.judge(ctx, file, src, d, block)
@@ -269,6 +275,7 @@ func (r *Runner) fillOne(ctx context.Context, file string, src []byte, d fparse.
 			prevProof, prevErr = block, rej.Error()
 			res.Detail = limitText(rej.Detail, maxFeedback)
 			prevErr = limitText(prevErr, maxFeedback)
+			lastProof, lastErr = prevProof, prevErr
 			continue
 		}
 		res.Status, res.Detail = Filled, ""

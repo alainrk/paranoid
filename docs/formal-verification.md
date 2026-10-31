@@ -54,7 +54,7 @@ the agent cannot move the goalposts.
 | 3 | Online foundation: `internal/llm`, three providers, key config, caps, request log | LLM only |
 | 4 | BYO: `paranoid formal fill` fills holes, checker in the loop, audit gate | LLM only |
 | 5 | paranoid-made: `paranoid formal prove`, model, spec approval, proof, differential tests | LLM only |
-| 6 | Report "Proofs" section, docs site page, README, demo | none |
+| 6 | Report "Proofs" section, docs site page, README, demo (report block, lint, and demo done; README pending) | none |
 
 ## Phase 1 design: offline rules
 
@@ -256,8 +256,8 @@ Safety rails, on by default:
 - Caps per run: `--max-requests` (default 100), `--max-tokens`
   (default 2,000,000 input plus output), `--timeout` (default 60m).
   The run stops cleanly at a cap and says which one.
-- Retries only on 429 and 5xx, at most 3, with backoff and the
-  provider's retry-after when given.
+- Retries only on 429, 5xx, and a dropped connection, at most 3, with
+  backoff and the provider's retry-after when given.
 - A local request log at `.paranoid/formal/runs/<run-id>.jsonl`: one
   line per call with provider, model, token counts, and the full
   request and response text. Keys and auth headers are never written.
@@ -400,7 +400,33 @@ it (Phase 5b):
 - Phase 0: done (AGENTS.md and roadmap updated).
 - Phase 1: done (FV001 to FV008, CLM006, spec lock file, `paranoid formal lock`, `unlock`, and `status`, fixtures, rules docs, docs site page `formal.html`).
 - Phase 2: done (`verify --formal-check`, `--formal-image`, `--formal-timeout`, FV009 to FV012, `[formal] allowed_axioms` in the policy file, `make formal-live` for the real-container tests). Not run for real: Mathlib projects.
-- Phase 3: done (`internal/llm` with anthropic, openai, and gemini clients on `net/http`, retries, run caps, request log under `.paranoid/formal/runs/`, `[formal.llm]` policy tables, `paranoid formal providers`). Not run against the real provider APIs: tests replay recorded-style JSON.
-- Phase 4: done (`paranoid formal fill`, package `internal/fill`, parser proof spans on `formal.Decl`). Tested with a fake provider and a fake checker only: not run against a real Lean or Rocq toolchain or a real provider. The kernel audit is appended to the scratch file and run as a second checker call, instead of a separate audit file. Not built: a docker checker, so v1 needs the toolchain installed locally.
+- Phase 3: done (`internal/llm` with anthropic, openai, and gemini clients on `net/http`, retries, run caps, request log under `.paranoid/formal/runs/`, `[formal.llm]` policy tables, `paranoid formal providers`). Unit tests replay recorded-style JSON. The OpenAI-compatible client was run for real against DeepSeek (see "First real provider runs" below); the Anthropic and Gemini clients were not.
+- Phase 4: done (`paranoid formal fill`, package `internal/fill`, parser proof spans on `formal.Decl`). Run for real by `make formal-live` (`TestLiveFill*`): a real Lean v4.15.0 checker in a container with a scripted fake OpenAI-compatible server. A good answer was filled; a changed statement, `native_decide`, an axiom, a macro expanding to `sorryAx`, and a `sorry` hidden in an unchanged helper lemma were all rejected; a wrong proof followed by a good one was filled on the second attempt. Also run against a real provider (see below). The kernel audit is appended to the scratch file and run as a second checker call. v1 needs the toolchain installed locally.
 - Phase 5a: done (offline half of `formal prove`). `internal/hotspot` reads a `<file>:<symbol>` hotspot (Go with go/ast; Python and TS with line-based heuristics), maps its types into the closed set, and gives the Lean identifier and exact signature. `internal/difftest` has the seeded input generator, the harness templates for Go, Python, TS, and Lean, and the comparison. Run for real: the Go, Python, and Node harnesses, and the Lean harness in a container with a correct and a wrong hand-written model (`make formal-live`). Lean checked: Int8 to Int64 and UInt8 to UInt64 exist in core, `Lean.Json` parse, `getInt?`, and `compress`, run with `lake env lean --run`, on toolchain v4.24.0. Not covered: methods, generics, floats, byte slices, and functions that panic on purpose.
-- Phase 5b: done (`paranoid formal prove`, package `internal/prove`). Draft and `--continue` modes, the draft validation, the retry loop with differential feedback, `formal/` project creation and detection (root first), and the audit of every locked theorem. Unit tests use a scripted provider and a fake runner. Run for real by `make formal-live` (`TestLiveProve*`): a container with Lean v4.24.0 and Go, a fake OpenAI-compatible server, and a small Go function (`Not` on a boolean). The run covered a wrong first model that the differential test caught, a retry, lock, a wrong first proof that the checker rejected, the fill, the audit, the rebuild, and the final "Proved on the Lean model" line. Not run against a real provider API, and not run on a real Mathlib project. Only a small boolean function was proved for real: integer models (Int64 wrapping proofs) are covered by the differential test live tests but not by a real proof run. Lean 4.24 or newer is needed for the Int8 to Int64 types.
+- Phase 5b: done (`paranoid formal prove`, package `internal/prove`). Draft and `--continue` modes, the draft validation, the retry loop with differential feedback, `formal/` project creation and detection (root first), and the audit of every locked theorem. Unit tests use a scripted provider and a fake runner. Run for real by `make formal-live` (`TestLiveProve*`): a container with Lean v4.24.0 and Go, a fake OpenAI-compatible server, and a small Go function (`Not` on a boolean). The run covered a wrong first model that the differential test caught, a retry, lock, a wrong first proof that the checker rejected, the fill, the audit, the rebuild, and the final "Proved on the Lean model" line. Also run end to end against a real provider on an Int64 function (see below). Not run on a real Mathlib project. Lean 4.24 or newer is needed for the Int8 to Int64 types.
+- Phase 6: done. The "Proofs" block in verify reports (text, markdown, JSON, SARIF properties), JSON schema version 9, `golangci-lint` now compiles the `formallive` and `smokelive` test files, `hack/demo/formal.sh`, the README pitch and FV rule table, and the docs pages `verify.html`, `formal.html`, and `report-schema.html`. The block is present only when the formal-verification check ran, and it never changes the score.
+
+## First real provider runs (2026-10-31)
+
+Provider: DeepSeek through the OpenAI-compatible client (`--provider openai --base-url https://api.deepseek.com/v1 --model deepseek-v4-pro`), inside the live-test containers. The key came from the environment only; the request logs were checked and hold no key or auth header.
+
+- `formal fill` on a Lean v4.15.0 project with four holes (a `Nat` rewrite, and three induction proofs over a custom `double`, a list sum, and a list reverse): 4 of 4 filled, 6 requests, about 46,000 tokens, about 6 minutes.
+- `formal prove` on a Go `Clamp(x, lo, hi int) int`, Lean v4.24.0: the draft matched the code on 1,000 generated inputs on the first attempt and gave four sensible specs. After a review and `formal lock`, `--continue` proved all four. `verify --formal-check` then rebuilt the project in a clean container and audited the four theorems: no findings, score 100.
+
+What the runs found and fixed:
+
+- A thinking model can spend the whole output cap before it answers. The empty reply was reported only as "the answer was empty". Now the error says the model hit its output limit, the default output cap went from 16,000 to 32,000 tokens, and the next prompt keeps the last rejected proof and its checker output instead of dropping them.
+- The provider dropped a connection mid-reply (an HTTP/2 GOAWAY), and the whole run stopped. Dropped connections are now retried like 429 and 5xx.
+- Without Mathlib, the model kept using Mathlib lemma names (`not_lt`, `le_trans`) and could not prove simple Int64 order facts: 0 of 2 theorems in 9 requests. The fill prompt now names the Lean toolchain and says whether Mathlib is there, and for files with fixed-width integers it gives the core route (rewrite with `Int64.lt_iff_toInt_lt` and `Int64.le_iff_toInt_le`, then `omega`; names checked on v4.24.0). The rerun proved the remaining 3 theorems in 4 requests.
+
+## Decided after the build (2026-10-31)
+
+- FV004 (weakened locked spec) and FV006 (soundness switch) do not force a fail verdict. Scoring stays per severity only, the same for every category (`internal/finding/score.go` says so on purpose; SF006, baseline tampering, works the same way). A warn verdict already exits with code 1, so CI and the Stop hook block on it. Repos that rely on proofs should set `strict = true` in `.paranoid.toml`, which turns any warn into a fail. The docs page `formal.html` says this.
+
+## Open questions and follow-ups
+
+- The Anthropic and Gemini clients have not been run against their real APIs, only the OpenAI-compatible one (with DeepSeek). Their request shapes follow the published API docs and are unit tested.
+- Never run on a real Mathlib project (`lake exe cache get` is written but untested).
+- Rocq projects that need extra opam packages are not supported by the re-check, because the check step has no network.
+- The Lean model in a paranoid-made proof is not locked: only theorem statements are. `prove --continue` reruns the differential test, which catches a changed model on sampled inputs only. A future rule could flag a changed model.
+- Release: nothing is tagged or pushed. The maintainer decides when and how the first release with Phases 0 to 2 ships.

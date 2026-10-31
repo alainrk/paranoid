@@ -107,6 +107,12 @@ func RenderText(res finding.Result, color bool) string {
 		}
 	}
 	fmt.Fprintf(&b, "test coverage: %s\n", coverageLine(res.Coverage))
+	if res.Proofs != nil {
+		b.WriteString("\nproofs:\n")
+		for _, l := range proofsLines(*res.Proofs) {
+			fmt.Fprintf(&b, "  %s\n", l)
+		}
+	}
 
 	if len(res.Suppressed.Entries) == 0 {
 		fmt.Fprintf(&b, "suppressed: %s\n", countNoun(res.Suppressed.Count, "finding"))
@@ -129,6 +135,33 @@ func RenderText(res finding.Result, color bool) string {
 	}
 
 	return b.String()
+}
+
+// proofsLines formats the Proofs block as plain lines, for text and
+// markdown alike.
+func proofsLines(p finding.Proofs) []string {
+	files := "none"
+	if len(p.FilesChanged) > 0 {
+		files = strings.Join(p.FilesChanged, ", ")
+	}
+	recheck := "not run"
+	if p.Recheck.Reason != "" {
+		recheck += " (" + p.Recheck.Reason + ")"
+	}
+	if p.Recheck.Ran {
+		if p.Recheck.BuildOK {
+			recheck = fmt.Sprintf("ran, build ok, %s audited, %s with disallowed axioms, %s with no kernel answer",
+				countNoun(p.Recheck.Audited, "theorem"), countNoun(p.Recheck.DisallowedAxioms, "theorem"), countNoun(p.Recheck.NoAnswer, "theorem"))
+		} else {
+			recheck = "ran, build failed"
+		}
+	}
+	return []string{
+		"proof files changed: " + files,
+		fmt.Sprintf("holes: %d, axioms or escapes: %d (at head, in changed proof files)", p.Holes, p.Escapes),
+		fmt.Sprintf("locked specs: %d total, %d ok, %d drifted, %d missing", p.Locked.Total, p.Locked.OK, p.Locked.Drifted, p.Locked.Missing),
+		"re-check: " + recheck,
+	}
 }
 
 // coverageLine formats the Coverage block as one line, for text and

@@ -9,6 +9,12 @@ produced: deleted or weakened tests, dependencies that do not exist,
 swallowed errors, and claims not backed by the change. It prints a
 scored report with an exit code you can gate CI on.
 
+**New: formal verification.** Agents can now write machine-checked
+proofs. paranoid makes sure those proofs mean something: no `sorry`
+left behind, no new axioms, no quietly weakened theorems. It can also
+help write the proofs for the code you care about. See
+[Formal verification](#formal-verification).
+
 Run it any time after an agent changed code: against your uncommitted
 working tree, a branch, or any two points in git history. See
 [When to run it](#when-to-run-it).
@@ -504,6 +510,29 @@ text matching, not a security scanner; see [Limits](#limits). SF006
 watches paranoid's own control surface: see
 [Security notes and the trust boundary](integrations/claude-code/README.md#security-notes-and-the-trust-boundary).
 
+### Formal verification (FV)
+
+| Rule  | Severity | What it catches                                                      |
+| ----- | -------- | ---------------------------------------------------------------------- |
+| FV001 | high     | A proof hole was added: `sorry`, `admit`, `Admitted`                  |
+| FV002 | high     | An axiom or trust escape was added: `axiom`, `Axiom`, `native_decide`, `implemented_by` |
+| FV003 | medium   | A theorem statement changed                                            |
+| FV004 | critical | A locked spec no longer matches the statement a human approved        |
+| FV005 | high     | A theorem was removed and not moved elsewhere                         |
+| FV006 | critical | A checker soundness switch was turned on (`Unset Guard Checking`, `-type-in-type`, `debug.skipKernelTC`) |
+| FV007 | high     | The spec lock file `.paranoid-specs.json` changed                     |
+| FV008 | medium   | The code under a locked spec changed in the same diff as its proof    |
+| FV009 | critical | The proof project does not build in the clean room (`--formal-check`) |
+| FV010 | high     | The kernel says a theorem depends on an axiom that is not allowed (`--formal-check`) |
+| FV011 | info     | The proof re-check was asked for but could not run                    |
+| FV012 | high     | The kernel gave no answer for a theorem it was asked to audit (`--formal-check`) |
+
+Covers Lean 4 (`.lean`) and Rocq (`.v`) files plus their build files.
+FV001 to FV008 read the diff and need nothing installed. FV009 to
+FV012 run only with `--formal-check`, which rebuilds the proofs in a
+container and asks the kernel itself which axioms each theorem uses.
+See [Formal verification](#formal-verification).
+
 ## Score, verdict, and exit codes
 
 The score starts at 100 and each finding subtracts a fixed weight:
@@ -529,6 +558,58 @@ the reason, so a pass with skipped checks is visible.
 Full details, plus the JSON report schema and SARIF output:
 [docs/site/exit-codes-ci.html](docs/site/exit-codes-ci.html) and
 [docs/site/report-schema.html](docs/site/report-schema.html).
+
+## Formal verification
+
+A proof checker reads every line of a proof, so nobody has to. What
+people still have to trust is the theorem statement, and that is
+exactly where an agent can cheat: leave a `sorry`, add an axiom,
+weaken the statement until it is easy, switch off a kernel check, or
+bend the code so the theorem becomes trivial. paranoid checks the
+verification itself.
+
+**Audit, offline.** Every `paranoid verify` run checks Lean and Rocq
+files in the diff (FV001 to FV008). Add `--formal-check` to rebuild
+the proof project in a clean container and read the kernel's own list
+of axioms for each theorem (FV009 to FV012). That catches holes the
+text rules cannot see, like a `sorry` hidden inside a macro.
+
+**Lock what a human approved.** A person reads a theorem, agrees it
+says the right thing, and locks it:
+
+```
+paranoid formal lock Parser.parse_total --code internal/parser/parse.go
+paranoid formal status
+```
+
+The lock file `.paranoid-specs.json` stores a hash of each approved
+statement. From then on, any change to a locked statement is a
+critical finding (FV004), and any edit to the lock file is flagged
+(FV007).
+
+**Help writing proofs, online and opt-in.** These are the only parts
+of paranoid that call an LLM. They run only when you ask, with a key
+you set (Anthropic, any OpenAI-compatible endpoint including local
+models, or Gemini):
+
+- `paranoid formal fill` fills `sorry` and `Admitted` in your own Lean
+  or Rocq project. An answer is kept only if the checker accepts it,
+  the statement did not change, nothing new was assumed, and the
+  kernel audit is clean.
+- `paranoid formal prove <file>:<function>` covers a Go, Python, or TS
+  function. It writes a Lean model of it and proposes specs. Then it
+  runs the real function and the model side by side on generated
+  inputs, and keeps the model only if they agree. After a human locks
+  the specs, `prove --continue` writes the proofs.
+
+**What a proof here means.** paranoid-made proofs are about the Lean
+model, and the model is checked against your code on many inputs, not
+all of them. The report says exactly that: "Proved on the Lean model.
+The model matches the code on N generated inputs." It never says your
+code is proven. Full details:
+[docs/site/formal.html](docs/site/formal.html).
+
+Try it with no Lean installed: `sh hack/demo/formal.sh`.
 
 ## fix-prompt
 
@@ -730,6 +811,11 @@ paranoid watch [path]       watch a repository and run static checks on every ch
 paranoid mcp                run an MCP server over stdio exposing verify as a tool
 paranoid attest keygen      generate a local ed25519 signing key
 paranoid attest verify      check a report signed by verify --sign
+paranoid formal status      show locked specs and proof holes
+paranoid formal lock        approve theorem statements and lock them by hash
+paranoid formal fill        fill proof holes with an LLM (online, opt-in)
+paranoid formal prove       model, spec, and prove a function (online, opt-in)
+paranoid formal providers   show which LLM provider each task would use
 paranoid rules              list all rules with descriptions
 paranoid version            print version, commit, and build date
 paranoid completion         shell autocompletion scripts

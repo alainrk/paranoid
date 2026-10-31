@@ -42,6 +42,17 @@ type Response struct {
 	OutputTokens int
 }
 
+// HitOutputLimit reports whether the provider stopped because the
+// answer reached the output cap. Thinking models can spend the whole
+// cap before they write any answer.
+func (r Response) HitOutputLimit() bool {
+	switch r.StopReason {
+	case "length", "max_tokens", "MAX_TOKENS":
+		return true
+	}
+	return false
+}
+
 // Provider is one LLM backend.
 type Provider interface {
 	// Name is the provider name: "anthropic", "openai", or "gemini".
@@ -51,7 +62,7 @@ type Provider interface {
 }
 
 // DefaultMaxTokens is the output cap used when a request sets none.
-const DefaultMaxTokens = 16000
+const DefaultMaxTokens = 32000
 
 // Provider names.
 const (

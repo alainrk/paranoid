@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	fparse "github.com/alainrk/paranoid/internal/formal"
+	"github.com/alainrk/paranoid/internal/llm"
+	"github.com/alainrk/paranoid/internal/sandbox"
 )
 
 func TestParseAnswer(t *testing.T) {
@@ -42,6 +44,37 @@ func TestParseAnswer(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestParseReply(t *testing.T) {
+	for _, stop := range []string{"length", "max_tokens", "MAX_TOKENS"} {
+		_, err := ParseReply(llm.Response{StopReason: stop, OutputTokens: 32000})
+		require.ErrorContains(t, err, "reached its output limit (32000 tokens)", stop)
+	}
+	_, err := ParseReply(llm.Response{StopReason: "stop"})
+	require.EqualError(t, err, "the answer was empty")
+	got, err := ParseReply(llm.Response{Text: "```lean\nby simp\n```", StopReason: "length"})
+	require.NoError(t, err)
+	require.Equal(t, "by simp", got)
+}
+
+func TestProjectNote(t *testing.T) {
+	core := ProjectNote(sandbox.ProofProject{Kind: sandbox.KindLean, Toolchain: "leanprover/lean4:v4.24.0"})
+	require.Contains(t, core, "leanprover/lean4:v4.24.0")
+	require.Contains(t, core, "Mathlib is not available")
+	ml := ProjectNote(sandbox.ProofProject{Kind: sandbox.KindLean, Toolchain: "leanprover/lean4:v4.24.0", Mathlib: true})
+	require.Contains(t, ml, "Mathlib is available")
+	require.Empty(t, ProjectNote(sandbox.ProofProject{Kind: sandbox.KindLean}))
+	require.Empty(t, ProjectNote(sandbox.ProofProject{Kind: sandbox.KindRocq, Toolchain: "x"}))
+}
+
+func TestPromptFixedWidthTip(t *testing.T) {
+	src := []byte("def m (x : Int64) : Int64 := x\n\ntheorem t (x : Int64) : m x = x := by\n  sorry\n")
+	decls := fparse.Decls(fparse.LangLean, src)
+	require.Len(t, decls, 1)
+	require.Contains(t, Prompt(fparse.LangLean, "A.lean", src, decls[0], "", ""), "Int64.lt_iff_toInt_lt")
+	plain := []byte("theorem t (n : Nat) : n = n := by\n  sorry\n")
+	require.NotContains(t, Prompt(fparse.LangLean, "A.lean", plain, fparse.Decls(fparse.LangLean, plain)[0], "", ""), "Tip:")
 }
 
 func TestNormalizeProof(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 )
 
 // maxRetries is the most retries after the first try. Retries happen
-// only on HTTP 429 and 5xx.
+// only on HTTP 429, 5xx, and a connection that failed or dropped.
 const maxRetries = 3
 
 const (
@@ -87,13 +87,27 @@ func (p *poster) redact(s string) string {
 	return s
 }
 
+// netError is a connection that failed or dropped before a full reply
+// came back. It is worth a retry.
+type netError struct{ err error }
+
+func (e *netError) Error() string { return e.err.Error() }
+func (e *netError) Unwrap() error { return e.err }
+
 // post sends body to url and returns the body of a 2xx answer. A 429
-// or 5xx answer is retried up to maxRetries times, waiting for the
-// provider's retry-after when it gives one. Any other failure returns
-// at once. errMsg pulls a message out of a provider error body.
+// or 5xx answer, or a dropped connection, is retried up to maxRetries
+// times, waiting for the provider's retry-after when it gives one. Any
+// other failure returns at once. errMsg pulls a message out of a provider error body.
 func (p *poster) post(ctx context.Context, url string, header map[string]string, body []byte, errMsg func([]byte) string) ([]byte, error) {
 	for attempt := 0; ; attempt++ {
 		status, retryAfter, data, err := p.once(ctx, url, header, body)
+		var ne *netError
+		if errors.As(err, &ne) && attempt < maxRetries {
+			if err := p.sleep(ctx, backoff(attempt)); err != nil {
+				return nil, fmt.Errorf("%s: %w", p.provider, err)
+			}
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +144,7 @@ func (p *poster) once(ctx context.Context, url string, header map[string]string,
 		if ctx.Err() != nil {
 			return 0, 0, nil, fmt.Errorf("%s: %w", p.provider, ctx.Err())
 		}
-		return 0, 0, nil, fmt.Errorf("%s: sending request: %w", p.provider, errors.New(p.redact(err.Error())))
+		return 0, 0, nil, fmt.Errorf("%s: sending request: %w", p.provider, &netError{errors.New(p.redact(err.Error()))})
 	}
 	defer func() { _ = resp.Body.Close() }()
 	data, err = io.ReadAll(io.LimitReader(resp.Body, maxResponseLen+1))
@@ -138,7 +152,7 @@ func (p *poster) once(ctx context.Context, url string, header map[string]string,
 		if ctx.Err() != nil {
 			return 0, 0, nil, fmt.Errorf("%s: %w", p.provider, ctx.Err())
 		}
-		return 0, 0, nil, fmt.Errorf("%s: reading reply: %w", p.provider, errors.New(p.redact(err.Error())))
+		return 0, 0, nil, fmt.Errorf("%s: reading reply: %w", p.provider, &netError{errors.New(p.redact(err.Error()))})
 	}
 	if len(data) > maxResponseLen {
 		return 0, 0, nil, fmt.Errorf("%s: reply is larger than %d bytes: %w", p.provider, maxResponseLen, ErrMalformedResponse)

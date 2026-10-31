@@ -104,7 +104,7 @@ type sarifRegion struct {
 
 // sarifRunProps carries the report-level information SARIF has no
 // dedicated field for: the trust score, the verdict, which checks
-// ran and were skipped, and the baseline suppression block. This is
+// ran and were skipped, and the baseline suppression block, and the optional proofs block. This is
 // SARIF's natural home for suppressed findings: SARIF
 // has no first-class suppression concept that matches paranoid's
 // baseline model, so the whole finding.Suppressed block is carried
@@ -115,6 +115,7 @@ type sarifRunProps struct {
 	ChecksRun     []string               `json:"checks_run"`
 	ChecksSkipped []finding.SkippedCheck `json:"checks_skipped"`
 	Suppressed    finding.Suppressed     `json:"suppressed"`
+	Proofs        *finding.Proofs        `json:"proofs,omitempty"`
 }
 
 // sarifLevel maps a paranoid severity onto one of SARIF's three
@@ -171,6 +172,7 @@ func RenderSARIF(res finding.Result) (string, error) {
 					ChecksRun:     checksRun,
 					ChecksSkipped: checksSkipped,
 					Suppressed:    suppressed,
+					Proofs:        res.Proofs,
 				},
 			},
 		},

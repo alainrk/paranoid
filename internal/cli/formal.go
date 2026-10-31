@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 
 	analyzeformal "github.com/alainrk/paranoid/internal/analyze/formal"
 	"github.com/alainrk/paranoid/internal/finding"
@@ -23,6 +24,9 @@ type formalOutcome struct {
 	findings []finding.Finding
 	ran      bool
 	skipped  *finding.SkippedCheck
+	// recheck is the re-check summary for the Proofs block. It is set
+	// only by the re-check stage.
+	recheck finding.ProofsRecheck
 }
 
 // isFormalPath reports whether a path is a proof file or a proof build
@@ -163,4 +167,60 @@ func collectFormalChanges(ctx context.Context, repo *gitx.Repo, baseRef, headRef
 		}
 	}
 	return out, nil
+}
+
+// buildProofs makes the Proofs block of the report. It reads the proof
+// files and the lock file at head (the worktree when headRef is empty),
+// with the same logic as `paranoid formal status`. The caller adds it
+// to the result only when the formal-verification check ran.
+func buildProofs(ctx context.Context, repo *gitx.Repo, headRef string, changes []gitx.Change, recheck finding.ProofsRecheck) (*finding.Proofs, error) {
+	lock := lockAtRef(ctx, repo, headRef)
+	specs := sortedSpecs(lock.Specs)
+	specFiles := map[string]bool{}
+	for _, s := range specs {
+		specFiles[s.File] = true
+	}
+	hashes, counts, err := scanProofState(ctx, repo, headRef, specFiles)
+	if err != nil {
+		return nil, err
+	}
+	_, ok, drifted, missing := classifySpecs(specs, hashes)
+
+	changed := map[string]bool{}
+	for _, c := range changes {
+		if c.Status != gitx.Deleted && fparse.LangOf(c.Path) != fparse.LangNone {
+			changed[c.Path] = true
+		}
+	}
+	proofs := &finding.Proofs{
+		FilesChanged: []string{},
+		Locked:       finding.ProofsLocked{Total: len(specs), OK: ok, Drifted: drifted, Missing: missing},
+		Recheck:      recheck,
+	}
+	for p := range changed {
+		proofs.FilesChanged = append(proofs.FilesChanged, p)
+	}
+	sort.Strings(proofs.FilesChanged)
+	for _, c := range counts {
+		if changed[c.path] {
+			proofs.Holes += c.holes
+			proofs.Escapes += c.escape
+		}
+	}
+	return proofs, nil
+}
+
+// lockAtRef reads the spec lock file at a ref (the worktree when the
+// ref is empty). A missing or unreadable lock file is an empty lock:
+// the static rules already report lock problems.
+func lockAtRef(ctx context.Context, repo *gitx.Repo, ref string) fparse.Lock {
+	raw, err := repo.FileAtRef(ctx, ref, fparse.LockFileName)
+	if err != nil {
+		return fparse.Lock{Version: 1}
+	}
+	lock, err := fparse.ParseLock(raw)
+	if err != nil {
+		return fparse.Lock{Version: 1}
+	}
+	return lock
 }

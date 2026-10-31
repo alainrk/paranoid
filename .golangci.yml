@@ -1,5 +1,11 @@
 version: "2"
 
+run:
+  # Also compile the live test files, which are skipped by default.
+  build-tags:
+    - formallive
+    - smokelive
+
 linters:
   default: none
   enable:

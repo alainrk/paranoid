@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/alainrk/paranoid/docs/schema/report-v1.schema.json",
-  "title": "paranoid verify report, schema version 7",
+  "title": "paranoid verify report, schema version 9",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -17,7 +17,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 8
+      "const": 9
     },
     "score": {
       "type": "integer",
@@ -41,6 +41,7 @@
     },
     "coverage": { "$ref": "#/$defs/coverage" },
     "suppressed": { "$ref": "#/$defs/suppressed" },
+    "proofs": { "$ref": "#/$defs/proofs" },
     "meta": { "$ref": "#/$defs/meta" }
   },
   "$defs": {
@@ -128,6 +129,43 @@
         },
         "delta_percent": {
           "type": "number"
+        }
+      }
+    },
+    "proofs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files_changed", "holes", "escapes", "locked", "recheck"],
+      "properties": {
+        "files_changed": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "holes": { "type": "integer", "minimum": 0 },
+        "escapes": { "type": "integer", "minimum": 0 },
+        "locked": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "ok", "drifted", "missing"],
+          "properties": {
+            "total": { "type": "integer", "minimum": 0 },
+            "ok": { "type": "integer", "minimum": 0 },
+            "drifted": { "type": "integer", "minimum": 0 },
+            "missing": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "recheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ran", "build_ok", "audited", "disallowed_axioms", "no_answer"],
+          "properties": {
+            "ran": { "type": "boolean" },
+            "reason": { "type": "string" },
+            "build_ok": { "type": "boolean" },
+            "audited": { "type": "integer", "minimum": 0 },
+            "disallowed_axioms": { "type": "integer", "minimum": 0 },
+            "no_answer": { "type": "integer", "minimum": 0 }
+          }
         }
       }
     },

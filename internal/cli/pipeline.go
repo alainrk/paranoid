@@ -259,6 +259,18 @@ func runVerify(ctx context.Context, in verifyInput, now func() time.Time) (findi
 		checksSkipped = append(checksSkipped, *fr.skipped)
 	}
 
+	var proofs *finding.Proofs
+	if fv.ran || in.formalCheck {
+		recheck := fr.recheck
+		if !in.formalCheck {
+			recheck.Reason = "not requested"
+		}
+		proofs, err = buildProofs(ctx, repo, headRef, changes, recheck)
+		if err != nil {
+			return finding.Result{}, err
+		}
+	}
+
 	checksRun = append(checksRun, checkErrHandling, checkSafety, checkConfigIntegrity, checkGoTestIntegrity, checkJSTestIntegrity, checkPyTestIntegrity)
 	finding.Sort(findings)
 
@@ -303,6 +315,7 @@ func runVerify(ctx context.Context, in verifyInput, now func() time.Time) (findi
 		ChecksSkipped: checksSkipped,
 		Coverage:      sbx.coverage,
 		Suppressed:    suppressed,
+		Proofs:        proofs,
 		Meta: finding.Meta{
 			Repo:        repo.Root(),
 			Base:        baseRef,

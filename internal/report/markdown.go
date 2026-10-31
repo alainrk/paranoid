@@ -55,6 +55,13 @@ func RenderMarkdown(res finding.Result) string {
 	}
 	fmt.Fprintf(&b, "\nTest coverage: %s\n", coverageLine(res.Coverage))
 
+	if res.Proofs != nil {
+		b.WriteString("\n## Proofs\n\n")
+		for _, l := range proofsLines(*res.Proofs) {
+			fmt.Fprintf(&b, "- %s\n", l)
+		}
+	}
+
 	b.WriteString("\n## Suppressed\n\n")
 	fmt.Fprintf(&b, "%s suppressed.\n", countNoun(res.Suppressed.Count, "finding"))
 	if len(res.Suppressed.Entries) > 0 {

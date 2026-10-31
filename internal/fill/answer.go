@@ -3,10 +3,22 @@ package fill
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	fparse "github.com/alainrk/paranoid/internal/formal"
+	"github.com/alainrk/paranoid/internal/llm"
+	"github.com/alainrk/paranoid/internal/sandbox"
 )
+
+// ParseReply is ParseAnswer on a provider response. An empty answer cut
+// off at the output cap gets an error that says so.
+func ParseReply(resp llm.Response) (string, error) {
+	if strings.TrimSpace(resp.Text) == "" && resp.HitOutputLimit() {
+		return "", fmt.Errorf("the answer was empty: the model reached its output limit (%d tokens) before answering, probably while thinking", resp.OutputTokens)
+	}
+	return ParseAnswer(resp.Text)
+}
 
 // ParseAnswer reads the model's reply. The whole reply must be one fenced
 // code block and nothing else. The fence is three or more backticks with
@@ -92,6 +104,21 @@ func langTag(lang fparse.Lang) string {
 	return "coq"
 }
 
+// ProjectNote tells the model which Lean toolchain the project uses and
+// whether Mathlib is there. Without it, models often reach for Mathlib
+// lemma names in a project that has only core Lean. It is empty for
+// Rocq and when the toolchain is unknown.
+func ProjectNote(p sandbox.ProofProject) string {
+	if p.Kind != sandbox.KindLean || p.Toolchain == "" {
+		return ""
+	}
+	note := "\nThe project uses the Lean toolchain " + p.Toolchain + "."
+	if p.Mathlib {
+		return note + " Mathlib is available.\n"
+	}
+	return note + " Mathlib is not available: use only names from core Lean and its standard library, and check that each lemma exists in that version.\n"
+}
+
 // SystemPrompt is the system prompt for a language.
 func SystemPrompt(lang fparse.Lang) string {
 	var shape string
@@ -114,6 +141,17 @@ func SystemPrompt(lang fparse.Lang) string {
 		"- Output exactly one fenced code block and no other text."
 }
 
+// fixedWidth matches Lean's fixed-width integer types.
+var fixedWidth = regexp.MustCompile(`\bU?Int(8|16|32|64)\b`)
+
+// fixedWidthTip is added for Lean files that use fixed-width integers.
+// Models get stuck on these types without it. The lemma names were
+// checked on Lean v4.24.0.
+const fixedWidthTip = "\nTip: for Int64 and the other signed fixed-width types, rewrite comparisons with " +
+	"Int64.lt_iff_toInt_lt and Int64.le_iff_toInt_le (the same names exist for Int8 to Int32), then use omega. " +
+	"For UInt64 and the other unsigned types, use UInt64.lt_iff_toNat_lt and UInt64.le_iff_toNat_le. " +
+	"Unfold the definition and split each if first.\n"
+
 // Prompt builds the user message for one attempt. prevProof and
 // prevError are empty on the first attempt.
 func Prompt(lang fparse.Lang, file string, src []byte, d fparse.Decl, prevProof, prevError string) string {
@@ -126,6 +164,9 @@ func Prompt(lang fparse.Lang, file string, src []byte, d fparse.Decl, prevProof,
 	cur := string(src[d.ProofStart:d.ProofEnd])
 	cf := fenceFor(cur)
 	fmt.Fprintf(&b, "Current proof (it has a hole):\n%s%s\n%s\n%s\n", cf, tag, strings.TrimSpace(cur), cf)
+	if lang == fparse.LangLean && fixedWidth.Match(src) {
+		b.WriteString(fixedWidthTip)
+	}
 	if prevError != "" {
 		if prevProof != "" {
 			pf := fenceFor(prevProof)
