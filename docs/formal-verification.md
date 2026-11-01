@@ -10,16 +10,16 @@ user-facing contract still lives under `docs/site/` and in
 Agents can now write machine-checked proofs (see Anthropic's
 "formal verification" research, where Claude proved no-crash
 properties for 123 libraries in Rocq). Once proofs are cheap, the weak
-spot is not the proof. The checker reads the proof. People only have
+spot is no longer the proof, because the checker reads it. People have
 to trust three things: the exact theorem statement, the model the
 theorem talks about, and the checker. An agent that wants a green run
 attacks exactly those: it leaves a hole (`sorry`, `Admitted`), adds an
 axiom, weakens the statement, turns off a kernel check, or bends the
 code so the theorem becomes trivial.
 
-paranoid's job is to verify the verification. It helps write proofs
-for the code a user cares about, and it audits every proof offline so
-the agent cannot move the goalposts.
+paranoid verifies the verification. It helps write proofs for the code
+a user cares about, and it audits every proof offline so the agent
+cannot change what is being proved.
 
 ## Decisions (2026-10-25)
 
@@ -32,7 +32,7 @@ the agent cannot move the goalposts.
 - The bridge from real code to Lean is a model plus differential
   tests. Reports say "proved on the model, model matches the code on N
   inputs". They never say "your code is proven".
-- Offline stays the default and stays complete. Online (LLM) features
+- Offline is the default and covers every audit feature. Online (LLM) features
   run only from explicit `paranoid formal` subcommands with a key the
   user configured. `paranoid verify` never calls an LLM.
 - LLM providers: Anthropic, OpenAI-compatible (also covers local
@@ -65,7 +65,7 @@ Shared parsing lives in `internal/formal`, the analyzer in
 
 Parsing works on source with comments and string literals blanked out
 (Lean `--` and nested `/- -/`; Rocq nested `(* *)`), keeping line
-numbers. Like the rest of paranoid, when unsure it stays quiet.
+numbers. Like the rest of paranoid, it reports nothing when unsure.
 
 Declarations the parser understands:
 
@@ -91,14 +91,14 @@ text, written as lowercase hex.
 | FV004 | critical | A locked spec does not match head: the statement hash differs, or the declaration is gone. Checked against the lock file as it is at base, so editing the lock in the same diff does not hide it. |
 | FV005 | high | A theorem or lemma defined at base is not defined anywhere in the head tree (a move to another file does not fire). |
 | FV006 | critical | A checker soundness switch turned on. Rocq: `Unset Guard Checking`, `Unset Positivity Checking`, `Unset Universe Checking`, `#[bypass_check`, `-type-in-type`. Lean: `debug.skipKernelTC`. Looks in `.lean`, `.v`, `_CoqProject`, `lakefile.lean`, `lakefile.toml`, `dune`, `dune-project`. |
-| FV007 | high | The spec lock file changed. Any edit deserves a human look, like SF006 for the baseline. |
-| FV008 | medium | The code a locked spec is about (its `code` path) changed in the same diff as the proof file of that spec. This is the reward hack the research names: bending the program so the theorem gets easy. |
+| FV007 | high | The spec lock file changed. Any edit needs human review, like SF006 for the baseline. |
+| FV008 | medium | The code a locked spec is about (its `code` path) changed in the same diff as the proof file of that spec. The research names this reward hack: changing the program so the theorem becomes easy to prove. |
 | CLM006 | medium | The claims say something was proved or formally verified, and the diff touches no `.lean` or `.v` file. |
 
 ### Spec lock file
 
 `.paranoid-specs.json` at the repo root. A human approves a theorem
-statement once, and the lock pins it.
+statement once, and the lock records its hash.
 
 ```json
 {
@@ -118,17 +118,17 @@ statement once, and the lock pins it.
 `code` and `note` are optional. Specs are sorted by name, then file.
 `paranoid formal lock <name>...` writes or updates entries from the
 working tree; `paranoid formal status` lists theorems, holes, and lock
-state. An agent can run `formal lock` too. That is why FV007 exists:
-the lock changing is always visible in the audit.
+state. An agent can run `formal lock` too. FV007 reports every change
+to the lock file.
 
 ## Phase 2 design: clean-room re-check (opt-in)
 
 `paranoid verify --formal-check` rebuilds the proof project in a
 container, using the same runtime choice as `--sandbox` (docker or
 podman; `--sandbox none` means the re-check cannot run). Then it asks
-the kernel which axioms each audited theorem really depends on. This
-part is exact: it cannot be fooled by the text tricks the static rules
-miss (a `sorry` hidden behind a macro or notation still shows up as
+the kernel which axioms each audited theorem depends on. This
+part is exact. Text tricks that the static rules miss do not affect it
+(a `sorry` hidden behind a macro or notation still shows up as
 `sorryAx`).
 
 Flags: `--formal-check` (off by default), `--formal-image` (override
@@ -255,7 +255,7 @@ Safety rails, on by default:
 
 - Caps per run: `--max-requests` (default 100), `--max-tokens`
   (default 2,000,000 input plus output), `--timeout` (default 60m).
-  The run stops cleanly at a cap and says which one.
+  The run stops at a cap and says which one.
 - Retries only on 429, 5xx, and a dropped connection, at most 3, with
   backoff and the provider's retry-after when given.
 - A local request log at `.paranoid/formal/runs/<run-id>.jsonl`: one
@@ -305,7 +305,7 @@ Step 1, draft (`prove`):
    (path, line range, signature) so the user can check the boundaries.
 2. v1 accepts only pure functions on plain data: integers, booleans,
    strings, and lists or arrays of those. Anything else is refused
-   with a clear reason.
+   with a reason.
 3. Use the Lean project at the repo root if there is one. Otherwise
    create `formal/` with a `lakefile.toml` (a `lean_lib` named
    `Formal`) and a `lean-toolchain`. `DetectProof` finds a Lean project
@@ -355,7 +355,7 @@ Differential test (no LLM involved):
   signature, from fixed templates: a Lean `main` that reads JSON inputs
   and prints the model's JSON outputs, and a Go, Python, or Node
   harness that calls the real function the same way. The LLM writes
-  neither harness, so it cannot make them agree by cheating.
+  neither harness, so it cannot make them agree by changing them.
 - Inputs: N cases (default 1,000, `--cases`) from a seeded generator
   (`--seed`, default fixed), with edge values (0, -1, max, empty,
   unicode) first.
@@ -366,11 +366,11 @@ Exit codes of `prove`: 0 for a matching draft (or a full proof), 2 when
 no matching model was found within the attempts or something is not
 proved, 3 on errors (including a refused hotspot).
 
-Report wording, always: "Proved on the Lean model. The model matches
+Report wording (fixed): "Proved on the Lean model. The model matches
 the code on N generated inputs." Never "the code is proven".
 
-What changed from the first design, found while building and running
-it (Phase 5b):
+Changes from the first design, found while building and running it
+(Phase 5b):
 
 - The design said the differential test comes in step 2. It now runs in
   step 1 too, inside the retry loop, so a person never reviews a model
@@ -384,12 +384,12 @@ it (Phase 5b):
   `Dir` field of `ProofProject`), and the clean-room scripts now `cd`
   into that folder.
 
-## Trust boundary, stated plainly
+## Trust boundary
 
-- Static rules (Phase 1) read text. A determined agent can hide a hole
-  behind a macro or a notation. Phase 2's kernel audit closes that gap.
+- Static rules (Phase 1) read text. An agent can hide a hole
+  behind a macro or a notation. Phase 2's kernel audit covers this case.
 - A proof is about a theorem. paranoid can show the theorem did not
-  change since a human approved it. It cannot tell you the approved
+  change since a human approved it. It cannot tell whether the approved
   theorem says what you meant.
 - paranoid-made proofs (Phase 5) are about a Lean model of the code.
   Differential tests show the model and the code agree on many inputs,
@@ -413,7 +413,7 @@ Provider: DeepSeek through the OpenAI-compatible client (`--provider openai --ba
 - `formal fill` on a Lean v4.15.0 project with four holes (a `Nat` rewrite, and three induction proofs over a custom `double`, a list sum, and a list reverse): 4 of 4 filled, 6 requests, about 46,000 tokens, about 6 minutes.
 - `formal prove` on a Go `Clamp(x, lo, hi int) int`, Lean v4.24.0: the draft matched the code on 1,000 generated inputs on the first attempt and gave four sensible specs. After a review and `formal lock`, `--continue` proved all four. `verify --formal-check` then rebuilt the project in a clean container and audited the four theorems: no findings, score 100.
 
-What the runs found and fixed:
+Problems the runs found, and the fixes:
 
 - A thinking model can spend the whole output cap before it answers. The empty reply was reported only as "the answer was empty". Now the error says the model hit its output limit, the default output cap went from 16,000 to 32,000 tokens, and the next prompt keeps the last rejected proof and its checker output instead of dropping them.
 - The provider dropped a connection mid-reply (an HTTP/2 GOAWAY), and the whole run stopped. Dropped connections are now retried like 429 and 5xx.

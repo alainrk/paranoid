@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>paranoid docs, getting started</title>
-<meta name="description" content="Install paranoid and run your first verify.">
+<meta name="description" content="Install paranoid and run verify.">
 <link rel="icon" href="../../assets/svg/paranoid-favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../../assets/png/paranoid-avatar-512.png" type="image/png" sizes="512x512">
 <link rel="apple-touch-icon" href="../../assets/png/paranoid-avatar-512.png">
@@ -123,16 +123,15 @@
 
   <main class="content">
     <span class="kicker">Getting started</span>
-    <h1>Install and run your first verify</h1>
+    <h1>Install and run verify</h1>
     <p class="lede">
-      paranoid is a single static binary. No account, no server, no
-      setup beyond installing it and having git on your machine.
+      paranoid is a single static binary. It needs git and no account or server.
     </p>
 
     <h2>Install</h2>
     <ul>
       <li>
-        <strong>Binaries.</strong> Grab the archive for your platform from
+        <strong>Binaries.</strong> Download the archive for your platform from
         <a href="https://github.com/alainrk/paranoid/releases">Releases</a>
         (Linux amd64/arm64, macOS amd64/arm64, Windows amd64).
       </li>
@@ -150,13 +149,13 @@
       </li>
     </ul>
 
-    <h2>Run it</h2>
+    <h2>Running verify</h2>
     <p>
       From inside a repository an agent has touched, run:
     </p>
     <pre><code>paranoid verify</code></pre>
     <p>
-      You do not need to commit anything first. <code>--head</code>
+      Changes do not need to be committed. <code>--head</code>
       defaults to your working tree exactly as it sits on disk,
       uncommitted and staged changes included. <code>--base</code>
       defaults to the merge-base with your default branch, or
@@ -189,11 +188,10 @@ test-integrity (2 findings)
       <code>head: worktree (uncommitted changes included)</code>
       means your working tree as it is on
       disk. The exit code follows the verdict (see
-      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>), so the
-      same command gates CI.
+      <a href="exit-codes-ci.html">Exit codes &amp; CI</a>).
     </p>
 
-    <h2>Check the agent's summary too</h2>
+    <h2>Checking the agent's summary</h2>
     <p>
       Add <code>--claims summary.md</code> (any free-text file) or
       <code>--session &lt;file&gt;</code> (an agent session file; see
@@ -202,7 +200,7 @@ test-integrity (2 findings)
       read from the git range's commit messages.
     </p>
 
-    <h2>Common ways to run it</h2>
+    <h2>Common invocations</h2>
     <p>Both <code>--base</code> and <code>--head</code> accept anything <code>git rev-parse</code> resolves: a branch, a tag, a SHA, <code>HEAD~3</code>, <code>origin/main</code>.</p>
     <table class="mono">
       <tr><th>Situation</th><th>Command</th></tr>
@@ -214,20 +212,20 @@ test-integrity (2 findings)
       <tr><td>A teammate's unfetched branch</td><td>git fetch origin<br>paranoid verify --base origin/main --head origin/agent-branch</td></tr>
     </table>
 
-    <h2>Adopting on an existing repo</h2>
+    <h2>Adopting on an existing repository</h2>
     <p>
       On a repository that has never run paranoid, <code>verify</code>
       reports every finding in the range, not only the latest change.
       Run <code>paranoid baseline</code> once to snapshot the current
-      findings; later runs then only fail on new ones. See
+      findings. Later runs fail only on new ones. See
       <a href="baseline.html">Baseline &amp; suppressions</a>.
     </p>
 
-    <h2>Next</h2>
+    <h2>See also</h2>
     <p>
-      <a href="verify.html">Read every verify flag &rarr;</a><br>
-      <a href="rules.html">See what paranoid checks &rarr;</a><br>
-      <a href="exit-codes-ci.html">Wire it into CI &rarr;</a>
+      <a href="verify.html">verify flags &rarr;</a><br>
+      <a href="rules.html">Rules &rarr;</a><br>
+      <a href="exit-codes-ci.html">Exit codes and CI &rarr;</a>
     </p>
   </main>
 </div>

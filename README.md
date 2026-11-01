@@ -9,19 +9,18 @@ produced: deleted or weakened tests, dependencies that do not exist,
 swallowed errors, and claims not backed by the change. It prints a
 scored report with an exit code you can gate CI on.
 
-**New: formal verification.** Agents can now write machine-checked
-proofs. paranoid makes sure those proofs mean something: no `sorry`
-left behind, no new axioms, no quietly weakened theorems. It can also
-help write the proofs for the code you care about. See
+**Formal verification.** paranoid checks machine-checked proofs that
+an agent wrote. It flags added `sorry`, new axioms, and weakened
+theorems. It can also help write proofs for selected code. See
 [Formal verification](#formal-verification).
 
-Run it any time after an agent changed code: against your uncommitted
+Run it after an agent changes code. It can check your uncommitted
 working tree, a branch, or any two points in git history. See
 [When to run it](#when-to-run-it).
 
 <!-- Demo GIF: record hack/demo/demo.sh (about 20 seconds) and embed it here. -->
 
-Run the demo yourself: `make build && sh hack/demo/demo.sh`
+To run the demo: `make build && sh hack/demo/demo.sh`
 
 Website: <https://alainrk.github.io/paranoid/>
 
@@ -31,8 +30,8 @@ the full rule reference, lives at
 pages are self-contained HTML under
 [docs/site](https://github.com/alainrk/paranoid/tree/main/docs/site),
 so you can also open `docs/site/index.html` straight from a checkout.
-This README covers the same ground in one page; the docs site is the
-one to link to and the one to search.
+This README covers the same material in one page. Link to the docs
+site rather than to this file.
 
 ## The problem
 
@@ -63,10 +62,9 @@ you do not want AI-developed code, this software is not for you.
 
 ## Quickstart
 
-After an agent finishes, run `paranoid verify` in the repository. You
-do not need to commit anything first: `--head` defaults to your
-working tree exactly as it sits on disk, uncommitted and staged
-changes included. `--base` defaults to the merge-base with your
+After an agent finishes, run `paranoid verify` in the repository. Nothing
+needs to be committed first. `--head` defaults to the working tree as
+it is on disk, including uncommitted and staged changes. `--base` defaults to the merge-base with your
 default branch (else `HEAD~1`).
 
 ```
@@ -100,8 +98,7 @@ disk. The exit code follows the verdict, so the same command gates CI.
 To check the agent's summary too, add `--claims summary.md` (any
 free-text file) or `--session <file>` (an agent session; see
 [Supported agents](#supported-agents) for the full list and what gets
-extracted from each). With neither flag, the claims checks do not run
-at all. If a `--session` file is given but its format cannot be
+extracted from each). Without either flag, the claims checks do not run. If a `--session` file is given but its format cannot be
 parsed, paranoid falls back to the range's commit messages instead of
 failing the run.
 
@@ -116,8 +113,8 @@ agent) and `--head` (after). Both accept anything `git rev-parse`
 resolves: a branch, a tag, a SHA, `HEAD~3`, `origin/main`. When
 `--head` is not given, paranoid checks your working tree.
 
-You can run it before any commit, or later on any two points in
-history. The common cases:
+It can run before any commit, or later on any two points in history.
+Common cases:
 
 The agent just stopped and nothing is committed yet:
 
@@ -153,7 +150,7 @@ git fetch origin
 paranoid verify --base origin/main --head origin/agent-branch
 ```
 
-Every push and pull request, automatically: see
+Every push and pull request: see
 [CI usage](#ci-usage). On a pull request that is a pre-merge gate; on
 a push to main it is an audit of what just merged.
 
@@ -170,13 +167,13 @@ Run this once, from the repo root:
 paranoid baseline --base <the oldest point you care about>
 ```
 
-This runs the exact same checks as `verify` and writes every finding
+This runs the same checks as `verify` and writes every finding
 it sees to `.paranoid-baseline.json`, with no reason and no expiry.
 Commit that file. From then on, `verify` auto-loads it: any finding
 that still matches one of its entries is moved out of the report's
 findings and into a `suppressed` section instead, and the score
 ignores it. New findings, the ones an agent introduces after adoption,
-still fail the run exactly as before. Nothing is hidden: the
+still fail the run. The
 `suppressed` section always lists what was suppressed and why, in
 every format, even when it is empty.
 
@@ -190,9 +187,8 @@ different file instead of the auto-detected
 `.paranoid-baseline.json` at the repo root, and `--no-baseline` skips
 baseline loading entirely, even the auto-detected one. A baseline file
 that exists but cannot be parsed is always a hard error (exit 3),
-whether it was auto-detected or named explicitly; only a genuinely
-missing file at the auto-detected path is silently treated as "nothing
-to suppress" (a missing file named explicitly by `--baseline` is still
+whether it was auto-detected or named explicitly; only a missing
+file at the auto-detected path is treated as "nothing to suppress" (a missing file named explicitly by `--baseline` is still
 an error, since you asked for that file by name).
 
 You can also hand-edit `.paranoid-baseline.json` to suppress one
@@ -200,13 +196,13 @@ specific finding you have reviewed and accept, instead of baselining
 everything. Every entry may carry a `reason` and an `expires` date
 (RFC 3339, for example `2026-12-01`). `paranoid baseline` never sets
 either, so if you set `expires` by hand you must also set `reason`,
-non-empty; a permanent hand-added suppression (no `expires`) is not
-required to, though it is good practice to always say why. Once
+non-empty; a permanent hand-added suppression (no `expires`) does not
+require one, but a reason is still recommended. Once
 `expires` passes, that entry stops suppressing: the finding comes back
 into the report and the score, and the report still lists the expired
 entry so you see it happened. Re-running `paranoid baseline` writes a
 fresh, full snapshot from scratch and discards any reason or expiry
-you added by hand; treat it as a reset, not a merge.
+you added by hand. It is a reset, not a merge.
 
 ## Team policy file
 
@@ -242,7 +238,7 @@ image-node = "node:22-slim"
   bare date like `2026-12-01`) is the same expiry format the baseline
   file uses. Once `expires` passes, the rule is no longer suppressed:
   its findings come back into the report and the score, and the report
-  still lists the expired match so it is never silently hidden.
+  still lists the expired match.
 - `[sandbox]`: `image-go`, `image-python`, `image-node` (strings) pin
   the container image the clean-room run uses for that language,
   instead of the suite's own default image.
@@ -259,14 +255,13 @@ listed in the report's `suppressed` section with its reason. The one
 difference from a baseline match is the `source` field on each
 suppression entry, `"policy"` instead of `"baseline"`, and text/markdown
 output labels it `suppressed-by-policy` rather than
-`suppressed-by-baseline`, so the two are never confused. A `[[disable]]`
+`suppressed-by-baseline`. A `[[disable]]`
 entry matches by rule ID alone, not by file: it suppresses that rule
 everywhere in the diff, not one specific finding of it. See
 [docs/site/report-schema.html](https://alainrk.github.io/paranoid/docs/site/report-schema.html) for the
 exact JSON shape.
 
-The bar for adding a fifth key to this file is a design decision, not a
-pull request.
+Adding a fifth key requires a design decision first.
 
 ## How it works
 
@@ -335,8 +330,7 @@ Guarantees:
   The only network use is the registry lookups above, and `--offline`
   turns those off too.
 - **Deterministic by default.** No LLM as judge. The same input
-  produces the same report, byte for byte in JSON, so you can diff
-  reports and trust reruns.
+  produces the same report, byte for byte in JSON.
 - **Fails soft.** A check that cannot run (no container runtime, no
   network, no recognizable test suite) is reported as skipped, with
   the reason, instead of crashing the run.
@@ -442,11 +436,9 @@ CLM005 needs a diff of at least 6 files (lockfiles and manifests
 never count either way) before it looks at the ratio, and fires when
 more than 60% of those files are neither a path the claims mention nor
 a file containing an identifier the claims name. Both numbers are
-named constants, tuned so a normal one- or two-file spillover stays
-quiet. Heavy on false positives for mechanical renames, formatting
-sweeps, and repo-wide codemods bundled with a real one-line fix: the
-claims can be entirely honest about a small change and still get
-flagged for the sweep riding along with it.
+named constants, chosen so that a one- or two-file spillover does not fire. It gives false positives for mechanical renames, formatting
+sweeps, and repo-wide codemods bundled with a small fix, even when
+the claims are accurate.
 
 #### Supported agents
 
@@ -487,9 +479,9 @@ consts, and vars (exact, via the Go parser); Python top-level `def`
 and `class` plus `__all__` entries; JS/TS export statements. Both
 rules cross-check every candidate removal against the whole head tree
 with `git grep` first, so a symbol that moved to another file does not
-fire. This category is heavy on false positives by nature (deliberate
-refactors and deprecations look identical to this heuristic); treat a
-finding as a reason to look, not a verdict.
+fire. Deliberate refactors and deprecations look identical to this
+heuristic, so false positives are common. Treat a finding as a reason
+to look, not a verdict.
 
 ### Safety (SF)
 
@@ -561,12 +553,11 @@ Full details, plus the JSON report schema and SARIF output:
 
 ## Formal verification
 
-A proof checker reads every line of a proof, so nobody has to. What
-people still have to trust is the theorem statement, and that is
-exactly where an agent can cheat: leave a `sorry`, add an axiom,
-weaken the statement until it is easy, switch off a kernel check, or
-bend the code so the theorem becomes trivial. paranoid checks the
-verification itself.
+A proof checker verifies every step of a proof. The theorem statement
+still has to be trusted, and an agent can tamper with it: leave a
+`sorry`, add an axiom, weaken the statement, switch off a kernel
+check, or change the code so the theorem becomes trivial. paranoid
+checks for these.
 
 **Audit, offline.** Every `paranoid verify` run checks Lean and Rocq
 files in the diff (FV001 to FV008). Add `--formal-check` to rebuild
@@ -609,7 +600,7 @@ The model matches the code on N generated inputs." It never says your
 code is proven. Full details:
 [docs/site/formal.html](https://alainrk.github.io/paranoid/docs/site/formal.html).
 
-Try it with no Lean installed: `sh hack/demo/formal.sh`.
+To try it without Lean installed: `sh hack/demo/formal.sh`.
 
 ## fix-prompt
 
@@ -643,10 +634,9 @@ full build, lint, and test suite (the equivalent of `make check`) and
 show that it passes.
 ```
 
-Hand that block straight back to the agent (a chat message, a
-follow-up prompt, a CI comment) and re-run `verify` once it replies.
-Findings already suppressed by a baseline never show up here, since
-`fix-prompt` only ever sees the findings `verify` would have scored.
+Give the block to the agent (a chat message, a follow-up prompt, a
+CI comment), then re-run `verify`. Findings already suppressed by a
+baseline do not appear, because `fix-prompt` only sees the findings `verify` would have scored.
 `--report <file>` renders from an already-generated `--format json`
 verify report instead of re-running the pipeline; see
 [fix-prompt flags](#fix-prompt-flags).
@@ -685,8 +675,8 @@ flags](#watch-flags) for the full flag list, including `--notify`.
 `verify` can sign its own JSON report, so a report attached to a pull
 request can later be checked for tampering, and can print a one-line
 commit trailer or write a badge file. Local signing (the default)
-never touches the network; keyless signing does, and only because you
-asked for it. See [Signing](#signing) below.
+never touches the network. Keyless signing uses the network and runs
+only when requested. See [Signing](#signing) below.
 
 ### Signing
 
@@ -1031,7 +1021,7 @@ runtime.
   parser to eventually need an update when a vendor changes its
   format.
 - A finding is a reason to look, not a verdict on intent. Legitimate
-  refactors delete tests too.
+  refactors can also delete tests.
 - Skipped checks do not lower the score. A pass means nothing
   suspicious was found in the checks that ran, so in CI read the
   skipped-checks list in the report, not just the exit code.
@@ -1180,7 +1170,7 @@ workflow (an audit of history, say) that should ignore it entirely.
 
 ### Plain CI
 
-No Action needed; the exit code does the work:
+Without the Action, use the exit code:
 
 ```sh
 paranoid verify --base "origin/$BASE_REF" --format md --output report.md
@@ -1211,7 +1201,7 @@ repos:
 
 The hook runs `paranoid verify --sandbox none --offline --base HEAD`:
 no clean-room test re-run and no registry lookups (both would be too
-slow or too network-dependent for a commit-time hook), just the
+slow or too network-dependent for a commit-time hook), only the
 static rules against HEAD versus the working tree. It declares
 `stages: [pre-commit, pre-push]`; the `pre-push` run is only useful as
 a second chance to catch what `git commit --no-verify` skipped, since

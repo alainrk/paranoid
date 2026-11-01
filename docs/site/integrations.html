@@ -124,10 +124,9 @@
     <span class="kicker">Integrate</span>
     <h1>Integrations</h1>
     <p class="lede">
-      Ways to wire paranoid into a workflow: the GitHub Action, a
-      pre-commit hook, and Claude Code (a Stop hook plus an MCP
-      server). All run the same binary you use locally; none is a
-      separate product.
+      Ways to run paranoid in a workflow: the GitHub Action, a
+      pre-commit hook, and Claude Code (a Stop hook and an MCP
+      server). All of them run the same binary you use locally.
     </p>
 
     <h2>GitHub Action</h2>
@@ -162,33 +161,32 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
     <h3>What the hook runs</h3>
     <pre><code>paranoid verify --sandbox none --offline --base HEAD</code></pre>
     <ul>
-      <li><strong>--sandbox none:</strong> no clean-room re-run of the test suite. A container build on every commit would be far too slow for a pre-commit hook; the sandbox rules are reported as skipped instead. Run <code>paranoid verify</code> by hand, or in CI, for the full clean-room check.</li>
-      <li><strong>--offline:</strong> no registry lookups. A pre-commit hook should not need the network at all; DEP001 to DEP004 are reported as skipped.</li>
+      <li><strong>--sandbox none:</strong> no clean-room re-run of the test suite. A container build on every commit is too slow for a pre-commit hook. The sandbox rules are reported as skipped instead. Run <code>paranoid verify</code> by hand, or in CI, for the full clean-room check.</li>
+      <li><strong>--offline:</strong> no registry lookups. A pre-commit hook should not need the network. DEP001 to DEP004 are reported as skipped.</li>
       <li><strong>--base HEAD:</strong> compare against the last commit. <code>--head</code> stays at its default, the working tree.</li>
       <li><strong>--format text</strong> (the default) is used as is. Add <code>args: [--fail-under, "80"]</code> (or any other <code>verify</code> flag) in the target project's own hook entry to raise the bar, since pre-commit appends <code>args</code> after <code>entry</code>.</li>
     </ul>
 
-    <h3>What "the commit range" means at each stage</h3>
+    <h3>The commit range at each stage</h3>
     <p>
-      <code>stages: [pre-commit, pre-push]</code> runs the exact same
-      command at both points, and <code>--base HEAD</code> means
-      different things depending on when it runs.
+      <code>stages: [pre-commit, pre-push]</code> runs the same
+      command at both points. <code>--base HEAD</code> covers
+      different changes at each point.
     </p>
     <ul>
       <li>
         At the <code>pre-commit</code> stage, HEAD is the last real
         commit and the working tree holds whatever is about to be
-        committed, so the check is meaningful. One caveat: paranoid
+        committed. paranoid
         diffs HEAD against the working tree, not against the git
-        index, so unstaged changes present at commit time are included
-        too.
+        index, so unstaged changes present at commit time are included.
       </li>
       <li>
         At the <code>pre-push</code> stage, the working tree is
         normally clean, so <code>--base HEAD</code> finds nothing to
-        check. This stage is only a second chance to catch what
-        <code>git commit --no-verify</code> skipped, not an audit of
-        the commits about to be pushed. For that, run
+        check. This stage catches changes that
+        <code>git commit --no-verify</code> skipped. It does not audit
+        the commits about to be pushed. To audit them, run
         <code>paranoid verify --base origin/main</code> by hand, or
         use the GitHub Action.
       </li>
@@ -201,7 +199,7 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
       pre-commit appends <code>args</code> after <code>entry</code>.
     </p>
 
-    <h3>Why language: golang</h3>
+    <h3>The golang hook language</h3>
     <p>
       pre-commit's <code>golang</code> language builds the hook's own
       repository with <code>go install ./...</code> inside an isolated
@@ -212,9 +210,8 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
       holding <code>package main</code>), which lands on
       <code>PATH</code> inside pre-commit's environment and matches
       the hook's <code>entry</code> line. No manual install step or
-      wrapper script is needed; the only prerequisite is a Go
-      toolchain, which pre-commit's <code>golang</code> language can
-      provide on its own.
+      wrapper script is needed. A Go toolchain is required, and
+      pre-commit's <code>golang</code> language can provide one.
     </p>
 
     <div class="card">
@@ -226,8 +223,8 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
 
     <h2 id="claude-code">Claude Code</h2>
     <p>
-      A settings.json hook config, and an MCP server. Neither needs
-      extra Go code; the hook is pure configuration. Full docs, the
+      A settings.json hook config and an MCP server. The hook is
+      configuration only and needs no extra Go code. Full docs, the
       settings snippet, and the security notes:
       <a href="https://github.com/alainrk/paranoid/tree/main/integrations/claude-code">integrations/claude-code/README.md</a>.
     </p>
@@ -267,28 +264,27 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
       only on exit code 2, with the command's stderr fed back as the
       reason; the trailing <code>1&gt;&amp;2</code> redirects
       <code>verify</code>'s report (stdout by default) to stderr so
-      Claude actually sees it, and <code>--strict</code> maps a warn
+      Claude receives it, and <code>--strict</code> maps a warn
       verdict onto exit 2 too, since a plain exit 1 does not block.
       The PreToolUse variant uses Claude Code's <code>if</code> field
-      to gate on the Bash tool's command text
-      (<code>Bash(git commit *)</code>), the real mechanism for
-      scoping a hook to one command; <code>matcher</code> alone only
-      matches the tool name.
+      to match the Bash tool's command text
+      (<code>Bash(git commit *)</code>). This scopes a hook to one
+      command; <code>matcher</code> alone only matches the tool name.
     </p>
 
     <h3>MCP server</h3>
     <p>
       <code>paranoid mcp</code> runs a Model Context Protocol server
-      over stdio: newline-delimited JSON-RPC 2.0, hand-rolled on the
-      standard library, no SDK dependency. It implements
+      over stdio: newline-delimited JSON-RPC 2.0, implemented on the
+      standard library with no SDK dependency. It implements
       <code>initialize</code>, <code>tools/list</code>, and
       <code>tools/call</code> for one tool, <code>verify</code>
       (arguments: <code>path</code>, <code>base</code>,
       <code>head</code>, <code>claims</code>, <code>session</code>,
       <code>offline</code>, <code>sandbox</code>), which runs the same
       pipeline as <code>paranoid verify</code> and returns the JSON
-      report as the tool result. Wire it into Claude Code as an MCP
-      server, for example:
+      report as the tool result. To add it to Claude Code as an MCP
+      server:
     </p>
     <pre><code>{
   "mcpServers": {
@@ -301,7 +297,7 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
 
     <h3 id="trust-boundary">Trust boundary</h3>
     <p>
-      Both integrations are only as trustworthy as the binary they run
+      Both integrations depend on the binary they run
       and the files that configure them. If the agent under audit can
       edit the installed <code>paranoid</code> binary,
       <code>.paranoid-baseline.json</code>, or the hook configuration,
@@ -309,8 +305,8 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
       repository the agent can write to, and point the hook at that
       installed binary on <code>PATH</code>, never a repo-local build.
       SF006 watches <code>.paranoid-baseline.json</code> and hook
-      configuration files for exactly this: it does not prevent the
-      edit, it surfaces it as a finding in the next run a human reads.
+      configuration files for this reason. It does not prevent the
+      edit. It reports the edit as a finding in the next run.
     </p>
   </main>
 </div>

@@ -131,10 +131,10 @@
 
     <div class="card">
       <p>
-        A proof checker only checks that a proof matches its theorem.
-        It cannot tell if the theorem is the one you wanted. The lock
-        file pins the statement you approved, so a later change to it
-        shows up in the audit instead of passing quietly.
+        A proof checker checks that a proof matches its theorem. It
+        cannot tell whether the theorem is the one you wanted. The lock
+        file records the statement you approved, so the audit reports a
+        later change to it.
       </p>
     </div>
 
@@ -146,9 +146,8 @@
       <li>From then on, <code>verify</code> guards it. FV004 (critical) fires if a locked statement changes or its declaration disappears. FV007 (high) fires on any edit to the lock file. FV008 (medium) fires if the locked proof and the code it names change in the same diff.</li>
     </ol>
     <p>
-      An agent can run <code>formal lock</code> too. That is why FV007
-      exists: a change to the lock is always visible in the audit and
-      deserves a human look. See the
+      An agent can run <code>formal lock</code> too. FV007 reports every
+      change to the lock file so that a human can review it. See the
       <a href="rules.html#formal-verification">FV rules</a>.
     </p>
     <p>
@@ -241,11 +240,11 @@
       head, in its <a href="verify.html#proofs">Proofs block</a>.
     </p>
 
-    <h2 id="demo">Try it: the demo</h2>
+    <h2 id="demo">Demo</h2>
     <p>
       <code>hack/demo/formal.sh</code> builds a throwaway Lean project
-      with one honest theorem and one locked spec. It then plays a
-      cheating agent: it adds <code>sorry</code> and an
+      with one honest theorem and one locked spec. It then acts as an
+      agent that cheats: it adds <code>sorry</code> and an
       <code>axiom</code>, weakens the locked theorem, and turns on a
       soundness switch. It runs <code>paranoid formal status</code> and
       <code>paranoid verify</code> so you see FV001, FV002, FV004,
@@ -276,7 +275,7 @@
       The rules above read text. <code>--formal-check</code> asks the
       proof checker instead. It rebuilds the proof project in a
       container, then asks the kernel which axioms each audited theorem
-      really depends on. A <code>sorry</code> hidden behind a macro or a
+      depends on. A <code>sorry</code> hidden behind a macro or a
       notation still shows up as <code>sorryAx</code>. Without the flag
       nothing changes in any report.
     </p>
@@ -314,7 +313,7 @@
       they use also shows up in every public theorem that uses them.
       Rocq theorems in a Module are printed with their full path. A theorem the checker cannot find by name
       (for example a name made by a macro) is reported as
-      FV012, never skipped quietly.
+      FV012, not skipped.
     </p>
 
     <h3>Allowed axioms</h3>
@@ -350,14 +349,14 @@ allowed_axioms = ["Classical.choice"]</code></pre>
 
     <h2>What this does and does not prove</h2>
     <ul>
-      <li>The rules read text. A determined agent can hide a hole behind a macro or a notation. The opt-in <a href="#recheck">re-check</a> asks the checker itself and closes that gap.</li>
+      <li>The rules read text. An agent can hide a hole behind a macro or a notation. The opt-in <a href="#recheck">re-check</a> asks the checker itself, which covers this case.</li>
       <li>A proof is about a theorem. paranoid can show the theorem did not change since a human approved it. It cannot tell you the approved theorem says what you meant.</li>
       <li>Proofs made for code in other languages are about a Lean model of that code. Tests that compare the model and the code can show they agree on many inputs, not on all inputs.</li>
     </ul>
 
     <h2 id="online">Online features and providers</h2>
     <p>
-      Some <code>paranoid formal</code> subcommands will call an LLM.
+      Some <code>paranoid formal</code> subcommands call an LLM.
       <code>fill</code> and <code>prove</code> are in this build (see
       below). Both use the same provider clients, settings, caps, and
       request log.
@@ -480,11 +479,11 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       <li><strong>Ask.</strong> The <code>spec</code> provider is asked for one fenced Lean block: <code>namespace Paranoid.&lt;File&gt;&lt;Symbol&gt;</code>, a <code>def model</code> with exactly the signature paranoid derives, and two to five theorems about <code>model</code>. Each theorem has a doc comment with one plain-English sentence and a proof of exactly <code>by sorry</code>. The prompt explains the type rules (fixed-width integers wrap like the source language, Python integers do not, how division and strings behave) and forbids axioms and escape hatches.</li>
       <li><strong>Validate.</strong> The block is checked before anything is built. It must parse. The model signature must match after whitespace is normalized. The model and any helper before the first theorem must have no hole. Every theorem must mention <code>model</code>. The rule marks FV002 (axioms and escapes) and FV006 (checker switches) must find nothing, and so must a short list of other commands (macros, notation, <code>set_option</code>, attributes, <code>#</code> commands, <code>partial</code>, <code>opaque</code>). Nothing may sit outside the namespace except <code>import</code> lines. A rejected answer is sent back with the reason.</li>
       <li><strong>Write.</strong> The file goes to <code>Formal/Paranoid/&lt;File&gt;&lt;Symbol&gt;.lean</code> under the Lake root. An existing file is not overwritten unless you pass <code>--force</code>.</li>
-      <li><strong>Build and compare.</strong> <code>lake build</code> builds the module (the <code>sorry</code> warnings are fine). Then the <a href="#differential-test">differential test</a> runs. On a build error, or a mismatch, the errors or the first differing inputs go back to the model for another draft, up to <code>--attempts</code>. <strong>The model has to match the code before you review anything.</strong> If no draft matches, the file is removed and nothing is kept.</li>
+      <li><strong>Build and compare.</strong> <code>lake build</code> builds the module (the <code>sorry</code> warnings are fine). Then the <a href="#differential-test">differential test</a> runs. On a build error, or a mismatch, the errors or the first differing inputs go back to the model for another draft, up to <code>--attempts</code>. <strong>The model must match the code before you review anything.</strong> If no draft matches, the file is removed and nothing is kept.</li>
       <li><strong>Print.</strong> The candidate specs are printed with the theorem name, its English line, and its Lean statement, then the exact next steps: read the file, <code>git add</code> it, run <code>paranoid formal lock &lt;names&gt; --code &lt;hotspot file&gt;</code>, then <code>paranoid formal prove --continue &lt;file&gt;:&lt;symbol&gt;</code>. (<code>lock</code> and <code>fill</code> read tracked files, so the model file must be added first.)</li>
     </ol>
     <p>
-      The draft step proves nothing. It only checks that the model
+      The draft step proves nothing. It checks that the model
       agrees with the code on the generated inputs, and gives you
       statements to read.
     </p>
@@ -503,8 +502,8 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       proved and passed the audit, the model builds, and the differential
       test passed. Otherwise the last line starts with
       <code>Not proved.</code> and says what is missing: which theorems
-      are not proved, or how many inputs differ. The code is never
-      called proven.
+      are not proved, or how many inputs differ. The output never says
+      the code is proven.
     </p>
 
     <h4>What is sent</h4>
@@ -562,9 +561,9 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     <h3>Keys and settings</h3>
     <ul>
       <li><strong>Keys come from environment variables only.</strong> There is no key field in any file. A <code>.paranoid.toml</code> entry may name a different variable with <code>api_key_env</code>, never the key itself. A field that looks like a secret (<code>api_key</code>, <code>key</code>, <code>token</code>, <code>secret</code>) is a policy error.</li>
-      <li><strong>No silent fallback.</strong> If the key variable is empty, the command stops and names the variable to set. It never tries another provider.</li>
+      <li><strong>No fallback.</strong> If the key variable is empty, the command stops and names the variable to set. It never tries another provider.</li>
       <li><strong>Per task.</strong> The tasks are <code>proof</code> (proof search) and <code>spec</code> (spec drafting and Lean models). Each can use its own provider. A task falls back to <code>[formal.llm]</code>, field by field. A table that names a different provider than the one in use does not lend its model, base URL, or key variable.</li>
-      <li><strong>Flags win.</strong> <code>--provider</code>, <code>--model</code>, and <code>--base-url</code> override the file. Precedence per field: flag, task table, <code>[formal.llm]</code>, default.</li>
+      <li><strong>Flags override files.</strong> <code>--provider</code>, <code>--model</code>, and <code>--base-url</code> override the file. Precedence per field: flag, task table, <code>[formal.llm]</code>, default.</li>
     </ul>
     <p>
       The fields are documented on the <a href="policy.html#formal-llm">policy page</a>.
@@ -579,7 +578,7 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     </p>
 
     <h3>Caps</h3>
-    <p>Every online run has caps, on by default. The run stops cleanly at a cap and the error names it.</p>
+    <p>Every online run has caps, on by default. The run stops at a cap and the error names it.</p>
     <table class="mono">
       <tr><th>Flag</th><th>Default</th><th>Meaning</th></tr>
       <tr><td>--max-requests</td><td>100</td><td>Most provider calls in one run</td></tr>
@@ -606,7 +605,7 @@ allowed_axioms = ["Classical.choice"]</code></pre>
       (mode 0600). It holds your code, so do not commit it.
     </p>
 
-    <h2 id="connect">How paranoid-made proofs connect to your code</h2>
+    <h2 id="connect">Proofs and the code they describe</h2>
     <p>
       This is the contract <a href="#prove"><code>paranoid formal prove</code></a>
       follows: what a hotspot can be, how the model is compared with
@@ -646,7 +645,7 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     </p>
     <h3 id="differential-test">The differential test</h3>
     <ul>
-      <li><strong>Harnesses come from paranoid, not from the LLM.</strong> Both are written from fixed templates and the function signature. For Go, a temporary test file runs in a temp copy of the repo, so unexported functions work. Python runs under <code>python3 -I</code>. TS runs under <code>node --experimental-strip-types</code>. Lean runs <code>lake env lean --run</code> on a generated <code>main</code>. The model can not change how it is called.</li>
+      <li><strong>paranoid writes the harnesses, not the LLM.</strong> Both are written from fixed templates and the function signature. For Go, a temporary test file runs in a temp copy of the repo, so unexported functions work. Python runs under <code>python3 -I</code>. TS runs under <code>node --experimental-strip-types</code>. Lean runs <code>lake env lean --run</code> on a generated <code>main</code>. The model can not change how it is called.</li>
       <li><strong>Inputs.</strong> A seeded generator with a fixed default seed, so the same seed gives the same inputs byte for byte. Edge values come first (0, 1, -1, the minimum and maximum of the type, empty string, "&eacute;", Japanese text, an emoji, empty list, one-element list). Then random values. The default is 1,000 inputs.</li>
       <li><strong>Compare.</strong> The outputs are compared as canonical JSON, one input at a time. A panic or exception in the real function counts as a failure and names the input. v1 supports total functions only.</li>
       <li><strong>Programs run.</strong> Only <code>go</code>, <code>python3</code>, <code>node</code>, and <code>lake</code>, each with a timeout. Your tree is copied first and never changed.</li>
@@ -655,8 +654,8 @@ allowed_axioms = ["Classical.choice"]</code></pre>
     <p>
       On success the last line of <code>formal prove --continue</code> says: <em>Proved on the Lean model. The model
       matches the code on N generated inputs.</em> It never says the code
-      is proven. Matching on N inputs is evidence, not proof, and it is
-      only as good as the inputs generated.
+      is proven. Matching on N inputs is evidence that depends on the
+      generated inputs. It is not a proof.
     </p>
   </main>
 </div>

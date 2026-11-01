@@ -136,9 +136,8 @@
     <p>
       The score starts at 100. Each finding subtracts a fixed weight
       by severity: critical 25, high 10, medium 4, low 1, info 0. The
-      floor is 0. One critical finding is enough to lose a pass; three
-      high findings do it too (two land exactly on the pass line at
-      80).
+      floor is 0. One critical finding, or three high findings, gives a score
+      below 80. Two high findings give exactly 80, which is still a pass.
     </p>
     <table>
       <tr><th>Score</th><th>Verdict</th><th>Exit code</th></tr>
@@ -158,9 +157,8 @@
     </p>
     <p>
       Exit code 3 means paranoid itself hit an error: a bad flag, not
-      a git repository, a git failure, an unreadable file. It never
-      means a finding fired; the report cannot be trusted either way
-      when you see a 3. <code>baseline</code>, <code>fix-prompt</code>,
+      a git repository, a git failure, an unreadable file. It is not
+      a finding. The report is not reliable when the exit code is 3. <code>baseline</code>, <code>fix-prompt</code>,
       <code>rules</code>, <code>version</code>, and <code>attest
       keygen</code> only ever exit 0 on success or 3 on error; they
       have no score or verdict of their own to map to 1 or 2.
@@ -184,14 +182,13 @@
     </p>
     <div class="card">
       <p>
-        The report always lists which checks ran and which were
-        skipped, with the reason. A pass with skipped checks is still
-        visible in the report, so read the skipped-checks list in CI,
-        not just the exit code.
+        The report lists which checks ran and which were skipped, with
+        the reason. A pass can include skipped checks, so check the
+        skipped-checks list in CI as well as the exit code.
       </p>
     </div>
 
-    <h2>The GitHub Action</h2>
+    <h2>GitHub Action</h2>
     <p>
       The composite action at <code>alainrk/paranoid/action@main</code>
       runs <code>verify</code> on the pull request range, uploads the
@@ -237,8 +234,8 @@ jobs:
     <p>Outputs: <code>verdict</code> (pass, warn, or fail) and <code>score</code> (0 to 100).</p>
     <p>
       The action has no input for <code>.paranoid.toml</code>: it does
-      not need one, since the file is read from the checked-out repo
-      itself. A repo's <code>[[disable]]</code> and <code>[sandbox]</code>
+      not need one, because the file is read from the checked-out
+      repository. A repo's <code>[[disable]]</code> and <code>[sandbox]</code>
       keys apply exactly as they do outside CI. Its <code>fail-under</code>
       key does not: the action always passes <code>--fail-under</code>
       explicitly (this input's own default is 50), so cobra always sees
@@ -276,9 +273,9 @@ jobs:
         with:
           sarif_file: paranoid-report.sarif</code></pre>
     <p>
-      Findings then show up next to the rest of the repository's code
-      scanning alerts, with the rule's severity, message, and file
-      location; each rule links back to its entry in docs/rules.md.
+      Findings appear with the repository's other code scanning alerts,
+      with the rule's severity, message, and file
+      location. Each rule links back to its entry in docs/rules.md.
       See <a href="report-schema.html">Report &amp; schema</a> for the
       SARIF contract itself.
     </p>
@@ -295,8 +292,8 @@ jobs:
       <a href="baseline.html">Baseline &amp; suppressions</a>.
     </p>
 
-    <h2>Plain CI, no Action</h2>
-    <p>The exit code is enough on any CI system:</p>
+    <h2>Other CI systems</h2>
+    <p>The exit code can gate any CI system:</p>
     <pre><code>paranoid verify --base "origin/$BASE_REF" --format md --output report.md</code></pre>
     <p>
       This repository runs the same check on every push and pull

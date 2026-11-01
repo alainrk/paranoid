@@ -124,37 +124,36 @@
     <span class="kicker">Report</span>
     <h1>The JSON report, its schema, and SARIF</h1>
     <p class="lede">
-      Four output formats, one underlying result. Pick <code>text</code>
+      paranoid writes one result in four formats: <code>text</code>
       for a terminal, <code>md</code> for a PR comment or job summary,
-      <code>json</code> for scripting, or <code>sarif</code> for code
+      <code>json</code> for scripting, and <code>sarif</code> for code
       scanning tools.
     </p>
 
     <h2>Formats</h2>
     <table>
-      <tr><th>Format</th><th>Use it for</th></tr>
+      <tr><th>Format</th><th>Use</th></tr>
       <tr><td>text (default)</td><td>Reading in a terminal. Uses color on a real terminal and respects <code>NO_COLOR</code>.</td></tr>
       <tr><td>md</td><td>PR comments, job summaries, anywhere Markdown renders.</td></tr>
       <tr><td>json</td><td>Scripting and storage. Byte-identical across reruns of the same input.</td></tr>
       <tr><td>sarif</td><td>GitHub code scanning and other SARIF-reading tools.</td></tr>
     </table>
     <p>
-      Pick with <code>--format</code> on <code>verify</code>. All four
-      renderers describe the same underlying <code>finding.Result</code>,
-      so the same run produces the same findings in every format; only
-      the shape differs.
+      Select a format with <code>--format</code> on <code>verify</code>.
+      All four renderers read the same <code>finding.Result</code>, so a
+      run produces the same findings in every format.
     </p>
 
-    <h2>The JSON report, schema version 9</h2>
+    <h2>JSON report, schema version 9</h2>
     <p>
       The JSON report follows a versioned schema, checked in at
       <a href="https://github.com/alainrk/paranoid/blob/main/docs/schema/report-v1.schema.json">docs/schema/report-v1.schema.json</a>.
       A test in the repository checks every rendered report against
-      this file; it accepts nothing the schema does not describe
+      this file. The schema allows no undeclared fields
       (<code>additionalProperties: false</code> everywhere). The
       current version is <code>9</code>. Whenever a change adds a
-      field, a category, or a report section, this number goes up; a
-      field never changes shape under the same number.
+      field, a category, or a report section, this number increases. A
+      field does not change shape within a version.
     </p>
     <table class="mono">
       <tr><th>Top-level field</th><th>Type</th><th>Meaning</th></tr>
@@ -240,8 +239,8 @@
 
     <h2>SARIF (--format sarif)</h2>
     <p>
-      SARIF 2.1.0, so findings can upload straight into GitHub code
-      scanning or any other SARIF-reading tool. One run, one tool
+      SARIF 2.1.0, for upload to GitHub code
+      scanning or any other SARIF reader. One run, one tool
       driver named <code>paranoid</code>, one <code>reportingDescriptor</code>
       per registered rule (id, short and full description, a
       <code>helpUri</code> pointing at that rule's anchor in
@@ -258,25 +257,25 @@
       The original severity is preserved in
       <code>properties.severity</code> on the result even after it is
       mapped to a SARIF level. Score, verdict, checks run, checks
-      skipped, and the suppressed block all ride along in
-      <code>runs[0].properties</code>, since SARIF has no first-class
-      concept that matches paranoid's own report shape. The
-      <code>proofs</code> block rides along there too, and only when
+      skipped, and the suppressed block are all written to
+      <code>runs[0].properties</code>, because SARIF has no matching
+      concept for paranoid's report shape. The
+      <code>proofs</code> block is written there too, only when
       the formal-verification check ran. Coverage is not included in
       SARIF properties.
     </p>
     <p>
       SARIF is versioned by the SARIF spec itself, not by
-      <code>schema_version</code>: a JSON report schema bump never
-      forces a SARIF shape change, and the reverse is true too. See
+      <code>schema_version</code>: a JSON report schema change does not
+      change the SARIF shape, and the reverse also holds. See
       <a href="exit-codes-ci.html">Exit codes &amp; CI</a> for the
       upload-sarif workflow example.
     </p>
 
-    <h2>fix-prompt's own JSON schema</h2>
+    <h2>fix-prompt JSON schema</h2>
     <p>
       <code>paranoid fix-prompt --format json</code> emits a
-      completely separate artifact with its own versioned schema at
+      separate document with its own versioned schema at
       <a href="https://github.com/alainrk/paranoid/blob/main/docs/schema/fix-prompt-v1.schema.json">docs/schema/fix-prompt-v1.schema.json</a>,
       currently version 1, independent of the verify report's schema
       version. See <a href="fix-prompt.html">fix-prompt</a>.
@@ -295,7 +294,7 @@
   "notes": []
 }</code></pre>
 
-    <h2>The history envelope, version 1</h2>
+    <h2>History envelope, version 1</h2>
     <p>
       <code>verify --save</code> writes each report to
       <code>.paranoid/history/</code>, wrapped in a small envelope with
@@ -304,20 +303,19 @@
       <code>{history_version, report}</code>, where <code>report</code>
       is the exact same object <code>--format json</code> would print
       for that run. <code>paranoid history --format json</code> emits a
-      third, derived shape, a per-run series for scripting, also
-      carrying its own <code>history_version</code>. See
-      <a href="history.html">History</a> for both shapes in full,
-      an example of each, and how the HTML trend view is built from
-      them.
+      third, derived shape, a per-run series for scripting, which also
+      has its own <code>history_version</code>. See
+      <a href="history.html">History</a> for both shapes, an example
+      of each, and how the HTML trend view is built.
     </p>
 
     <div class="card">
       <p>
-        Both schema files are checked in and both are tested: a
-        rendered report that does not match its schema fails the build.
-        If your own tooling parses these formats, pin to a schema
-        version and treat an unexpected <code>schema_version</code> as
-        an error, the same way <code>fix-prompt --report</code> does.
+        Both schema files are checked in and tested. A rendered report
+        that does not match its schema fails the build. If your own
+        tooling parses these formats, pin a schema version and treat an
+        unexpected <code>schema_version</code> as an error, as
+        <code>fix-prompt --report</code> does.
       </p>
     </div>
   </main>

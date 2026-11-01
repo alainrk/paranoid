@@ -126,13 +126,13 @@
     <h1>verify and its flags</h1>
     <p class="lede">
       <code>paranoid verify [path]</code> is the main command. It runs
-      every check, scores the result, and prints a report. Everything
+      every check, scores the result, and prints a report. The content
       below is taken from <code>paranoid verify --help</code> on this
       branch.
     </p>
 
-    <h2>What it does, in order</h2>
-    <p>On the base-to-head diff, in this order:</p>
+    <h2>Check order</h2>
+    <p>verify runs these checks on the base-to-head diff, in this order:</p>
     <ol>
       <li><strong>Test integrity.</strong> Go via the real Go parser; Python and JS/TS via line heuristics. Flags deleted tests, weakened assertions, new skips, tautologies, renames that hide a test from the runner, new mocking, new retries, new sleeps, and stretched timeouts. Test and CI configuration files get their own check.</li>
       <li><strong>Dependency consistency.</strong> New imports cross-checked against manifests (go.mod, package.json, requirements.txt, pyproject.toml, Cargo.toml).</li>
@@ -150,8 +150,7 @@
       build, or lock file, or <code>--formal-check</code> was used),
       the report gains a <strong>Proofs</strong> block. When it did not
       run, the block is absent and the report is unchanged. It is a
-      summary only. It never changes the score, and passing proofs do
-      not raise it. It has four lines:
+      summary only. It does not change the score. It has four lines:
     </p>
     <ul>
       <li><strong>Proof files changed.</strong> The changed <code>.lean</code> and <code>.v</code> files, sorted.</li>
@@ -173,12 +172,12 @@
 
     <p>
       Unless <code>--no-policy</code> is set, a <code>.paranoid.toml</code>
-      at the repo root feeds three of the steps above: a
+      at the repo root applies to three of the steps above: a
       <code>[[disable]]</code> entry suppresses a rule the same way step
       9 does, a <code>[sandbox]</code> image pin is used by step 5
       unless <code>--sandbox-image</code> is given, and
-      <code>fail-under</code>/<code>strict</code> act as this repo's own
-      defaults, beneath the matching flag. See
+      <code>fail-under</code>/<code>strict</code> act as this repository's
+      defaults. The matching flag takes precedence. See
       <a href="policy.html">Team policy file</a>.
     </p>
 

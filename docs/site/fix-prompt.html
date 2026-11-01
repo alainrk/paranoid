@@ -157,9 +157,7 @@ When every instruction above is done, prove it: rerun this project's
 full build, lint, and test suite (the equivalent of `make check`) and
 show that it passes.</code></pre>
     <p>
-      Hand that block straight back to the agent (a chat message, a
-      follow-up prompt, a CI comment) and re-run <code>verify</code>
-      once it replies.
+      Give that block to the agent (a chat message, a follow-up prompt, a CI comment) and re-run <code>verify</code> after it replies.
     </p>
 
     <h2>Where each instruction comes from</h2>
@@ -185,14 +183,14 @@ show that it passes.</code></pre>
       <a href="rules.html">docs/rules.md</a>.
     </p>
 
-    <h2>Findings are already filtered</h2>
+    <h2>Which findings are included</h2>
     <ul>
-      <li>Findings already suppressed by a baseline never show up here, since <code>fix-prompt</code> only ever sees the findings <code>verify</code> would have scored. See <a href="baseline.html">Baseline &amp; suppressions</a>.</li>
-      <li>Skipped checks are listed at the end as "could not verify" notes, not silently dropped.</li>
+      <li>Findings already suppressed by a baseline are not included, because <code>fix-prompt</code> only ever sees the findings <code>verify</code> would have scored. See <a href="baseline.html">Baseline &amp; suppressions</a>.</li>
+      <li>Skipped checks are listed at the end as "could not verify" notes.</li>
       <li>Instructions are ordered by severity, then rule ID, then file: the same input always produces the same block, in the same order.</li>
     </ul>
 
-    <h2>Two ways to run it</h2>
+    <h2>Input modes</h2>
     <p>
       By default, <code>fix-prompt [path]</code> runs the verify
       pipeline itself, accepting the same <code>--base</code>,
@@ -204,8 +202,7 @@ show that it passes.</code></pre>
       already-generated <code>--format json</code> verify report
       instead of re-running the pipeline. <code>--report</code> cannot
       be combined with any pipeline flag (base, head, claims, session,
-      sandbox, baseline); either point <code>fix-prompt</code> at a
-      report or let it verify the range itself, never both.
+      sandbox, baseline); use either a report or the pipeline flags, not both.
     </p>
     <pre><code>paranoid verify --format json --output report.json
 paranoid fix-prompt --report report.json</code></pre>
@@ -218,7 +215,7 @@ paranoid fix-prompt --report report.json</code></pre>
       <tr><td>--output string</td><td>stdout</td><td>Write the instruction block to a file instead</td></tr>
     </table>
     <p>
-      Plus every pipeline flag <code>verify</code> has: <code>--base</code>,
+      It also accepts every pipeline flag <code>verify</code> has: <code>--base</code>,
       <code>--head</code>, <code>--offline</code>, <code>--sandbox</code>,
       <code>--sandbox-image</code>, <code>--sandbox-timeout</code>,
       <code>--compare-base</code>, <code>--claims</code>,

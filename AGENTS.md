@@ -96,6 +96,14 @@ severities, fixtures). Treat that contract as released and stable.
 
 - Plain English in everything: comments, errors, docs, commit
   messages, PR text. Short sentences. Common words.
+- Docs use a neutral technical register, like a man page or a
+  classic README. Describe what the tool does; do not sell it.
+  Headings name the topic ("Exit codes", "Baseline file format"),
+  not a slogan. No taglines, punchy fragments, rhetorical questions,
+  or "X, not Y" lines written for effect. No pep talk ("Try it",
+  "your first hour"); second person is fine for plain instructions
+  ("Run X to do Y"). State facts directly: "X does Y", "Requires Z",
+  "Exit code 3 means ...".
 - Never use em-dashes anywhere: not in commits, commit messages, PR
   titles, PR descriptions, comments, or code comments. Use a comma,
   period, parentheses, or rephrase.

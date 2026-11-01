@@ -142,8 +142,7 @@
       <p>
         The commit-message fallback only triggers when a
         <code>--session</code> file is given but its format fails to
-        parse. With neither flag, the claims stage does not run at
-        all, not even as a skipped check, and CLM001 to CLM006 do not
+        parse. With neither flag, the claims stage does not run, not even as a skipped check, and CLM001 to CLM006 do not
         appear in that run's findings.
       </p>
     </div>
@@ -151,10 +150,9 @@
     <h2>Supported agents</h2>
     <p>
       <code>--session &lt;file&gt;</code> accepts any of the formats
-      below; paranoid auto-detects which one a file is from its
-      content, trying the parsers in a fixed order (most specific
-      format first) so a file never needs a <code>--format</code>-style
-      flag to say what wrote it.
+      below; paranoid auto-detects the format from the file's
+      content. It tries the parsers in a fixed order, most specific
+      format first, so no format flag is needed.
     </p>
     <div class="twrap">
     <table class="mono">
@@ -174,11 +172,11 @@
       <p>
         None of these five formats is a documented, versioned API;
         each vendor can change its session file's shape at any time.
-        Every parser is shape-gated and fails soft: a line or block it
-        does not recognize is skipped, never an error, and a file that
-        yields no usable text at all falls back to a weaker claims
-        source (commit messages, then a skipped check) instead of
-        failing the run. Treat every extraction as best-effort.
+        Every parser checks the shape of the input and skips any line
+        or block it does not recognize without raising an error. A file
+        that yields no usable text falls back to a weaker claims source
+        (commit messages, then a skipped check) and the run does not
+        fail. Extraction is best effort.
       </p>
     </div>
 
@@ -207,16 +205,16 @@
       <a href="rules.html#claims">rules page</a>.
     </p>
 
-    <h2>API surface, gated on claims</h2>
+    <h2>API surface rules</h2>
     <p>
       Two more rules, AS001 and AS002, only run when claims are
-      present at all. They diff public symbols (Go, Python, JS/TS)
+      present. They diff public symbols (Go, Python, JS/TS)
       between base and head and flag a symbol removed while the
       claims say a fix or feature landed, cross-checked against the
-      whole head tree so a symbol that merely moved does not fire.
+      whole head tree so a symbol that moved does not fire.
       With no claims source, this stage records a skipped check,
       "api-surface: no claims provided (pass --claims or --session to
-      enable this check)", rather than silently passing.
+      enable this check)".
       See the <a href="rules.html#api-surface">API surface rules</a>.
     </p>
   </main>

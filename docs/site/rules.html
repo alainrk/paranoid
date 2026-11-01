@@ -154,9 +154,9 @@
         registry in <code>internal/rules</code>. <code>docs/rules.md</code>
         in the repository is the canonical reference; a test fails the
         build if that file drifts from the registry. This page mirrors
-        its content for the web, and can lag by one commit if this page
-        is not regenerated in the same PR as a rule change. When in
-        doubt, or for the raw markdown, read
+        its content for the web and can lag by one commit if it is not
+        regenerated in the same PR as a rule change. For the raw
+        markdown, read
         <a href="https://github.com/alainrk/paranoid/blob/main/docs/rules.md">docs/rules.md</a>
         or run <code>paranoid rules</code>, which prints from the same
         registry.
@@ -165,12 +165,11 @@
 
     <p>
       Go test files and non-test source are analyzed with
-      <code>go/ast</code>, the real Go parser, which is exact. Python
-      and JS/TS files are analyzed with line heuristics driven by
-      pattern tables; those accept imperfection, and each rule below
-      lists its known false positives. When unsure, heuristics prefer
-      staying quiet over firing wrongly. Severities and rule IDs are
-      frozen forever once released.
+      <code>go/ast</code>, the Go parser. Python and JS/TS files are
+      analyzed with line heuristics driven by pattern tables, which
+      are not exact. Each rule below lists its known false positives.
+      When a heuristic is unsure, it does not fire. Severities and
+      rule IDs do not change once released.
     </p>
 
     <h2>Categories</h2>
@@ -186,9 +185,8 @@
     </div>
     <p>
       Eight categories, 55 rules. <a href="sessions-claims.html">Claims</a>
-      and <a href="sandbox.html">sandbox</a> have their own pages with
-      more context; the full text of every rule in every category is
-      below.
+      and <a href="sandbox.html">sandbox</a> have their own pages.
+      The full text of every rule follows.
     </p>
 
     <h2 id="test-integrity">Test integrity (TI)</h2>

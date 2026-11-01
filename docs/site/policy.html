@@ -131,10 +131,9 @@
 
     <div class="card">
       <p>
-        There is no general config system. An unknown key, an unknown
+        paranoid has no general configuration system. An unknown key, an unknown
         table, or a key with the wrong type is an execution error
-        (exit 3) that names the offending key. This is deliberate: the
-        bar for adding a key is a design decision, not a pull request.
+        (exit 3) that names the offending key.
       </p>
     </div>
 
@@ -206,13 +205,11 @@ api_key_env = "LOCAL_LLM_KEY"</code></pre>
 
     <h2>Precedence</h2>
     <p>
-      Flag beats file beats default, for both <code>fail-under</code>
-      and <code>strict</code>:
+      For both <code>fail-under</code> and <code>strict</code>, the flag has the highest precedence, then the file, then the default:
     </p>
     <ol>
       <li>The command-line flag wins whenever it is given on the
-        command line, even to a value that happens to match the
-        built-in default.</li>
+        command line, even if the value matches the built-in default.</li>
       <li>Otherwise, <code>.paranoid.toml</code>'s value wins, when the
         file sets that key.</li>
       <li>Otherwise, paranoid's own default applies:
@@ -235,16 +232,14 @@ api_key_env = "LOCAL_LLM_KEY"</code></pre>
 
     <h2>How a disabled rule appears in the report</h2>
     <p>
-      A <code>[[disable]]</code> match is reported exactly the way a
-      baseline match is (see <a href="baseline.html">Baseline &amp;
+      A <code>[[disable]]</code> match is reported the same way as a baseline match (see <a href="baseline.html">Baseline &amp;
       suppressions</a>): the finding leaves <code>findings</code> and
       the score, and appears in the report's <code>suppressed</code>
       section with the entry's <code>reason</code>. The one difference
       is the <code>source</code> field on each suppression entry,
       <code>"policy"</code> instead of <code>"baseline"</code>; text
       and markdown output label it <code>suppressed-by-policy</code>
-      rather than <code>suppressed-by-baseline</code>, so the two are
-      never confused. An entry whose <code>expires</code> date has
+      rather than <code>suppressed-by-baseline</code>. An entry whose <code>expires</code> date has
       passed stops suppressing: its finding comes back into the report
       and the score, and the report still lists the expired match.
     </p>
@@ -267,7 +262,7 @@ api_key_env = "LOCAL_LLM_KEY"</code></pre>
       <code>.paranoid.toml</code> loads from the repo root only, the
       same rule the baseline file follows: no path-override flag, no
       walking up parent directories, no global file outside the repo.
-      A missing file is not an error, there is simply nothing to load.
+      A missing file is not an error, there is nothing to load.
       A file that exists but fails to parse is always a hard error
       (exit 3), naming the key or table that broke it.
     </p>

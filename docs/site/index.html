@@ -185,33 +185,33 @@
     <h1>paranoid docs</h1>
     <p class="lede">
       Reference documentation for paranoid, a local CLI that audits
-      agent-written diffs: every command, every flag, every rule, the
+      agent-written diffs. It covers commands, flags, rules, the
       report schema, and CI setup. For an overview of the tool, see
       the <a href="../../index.html">landing page</a>.
     </p>
 
     <h2>What paranoid does</h2>
     <p>
-      Point paranoid at a git range: the commit before the agent worked
+      paranoid takes a git range: the commit before the agent worked
       and the commit (or working tree) after. It analyzes the diff for
       deleted or weakened tests, dependencies that do not exist,
       swallowed errors, removed public symbols, disabled safety
       controls, and claims not backed by the change. It can also rerun
       the test suite in a container with no network. It prints a report
-      with a 0 to 100 score and exits with a code you can gate CI on.
+      with a 0 to 100 score and sets an exit code for use in CI.
     </p>
     <p>
-      Everything runs locally. No telemetry, no account, no server.
-      The only network use is optional dependency-registry lookups,
-      and <code>--offline</code> turns those off too.
+      Everything runs locally. There is no telemetry, account, or server.
+      The only network use is optional dependency-registry lookups.
+      <code>--offline</code> disables them.
     </p>
 
-    <h2>Where to start</h2>
+    <h2>Contents</h2>
     <div class="grid2">
       <a class="tile" href="getting-started.html">
         <span class="rid">Start here</span>
         <h3>Getting started</h3>
-        <p>Install paranoid and run your first verify.</p>
+        <p>Install paranoid and run verify.</p>
       </a>
       <a class="tile" href="verify.html">
         <span class="rid">Command</span>
@@ -261,12 +261,12 @@
       <a class="tile" href="fix-prompt.html">
         <span class="rid">Command</span>
         <h3>fix-prompt</h3>
-        <p>Turn a report into a corrective instruction block for the agent.</p>
+        <p>Render a report as a corrective instruction block for the agent.</p>
       </a>
       <a class="tile" href="watch.html">
         <span class="rid">Command</span>
         <h3>watch</h3>
-        <p>Watch a repository and run static checks live, on every change.</p>
+        <p>Watch a repository and run static checks on every change.</p>
       </a>
       <a class="tile" href="formal.html">
         <span class="rid">Command</span>
@@ -285,7 +285,7 @@
       </a>
     </div>
 
-    <h2>Command reference at a glance</h2>
+    <h2>Command summary</h2>
     <div class="twrap">
     <table class="mono">
       <tr><th>Command</th><th>What it does</th></tr>
@@ -306,8 +306,8 @@
     <p>
       Every command's flags are taken from its own <code>--help</code>
       output in this repository, on the branch this page describes.
-      If your installed build behaves differently, trust
-      <code>paranoid &lt;command&gt; --help</code> over this page.
+      If your installed build behaves differently, use
+      <code>paranoid &lt;command&gt; --help</code> as the reference.
     </p>
 
     <hr>

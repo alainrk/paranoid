@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>paranoid, verify your AI coding agents</title>
+<title>paranoid, verification of AI agent code changes</title>
 <meta name="description" content="paranoid is a local CLI that audits agent-written diffs: test integrity, dependencies, error handling, safety controls, clean-room test runs, and claim verification.">
 <link rel="icon" href="assets/svg/paranoid-favicon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/png/paranoid-avatar-512.png" type="image/png" sizes="512x512">
@@ -299,12 +299,12 @@
 
   <div class="hero">
     <span class="stamp">Trust report <b>&bull;</b> for AI-written code</span>
-    <h1>AI writes the code. <em>paranoid</em> verifies it.</h1>
+    <h1><em>paranoid</em>: verification of AI agent code changes</h1>
     <p class="lede">
-      One command checks the diff for deleted or weakened tests, dependencies
+      paranoid checks a diff for deleted or weakened tests, dependencies
       that do not exist, swallowed errors, and claims not backed by the
-      change, then prints a scored report with an exit code you can gate
-      CI on.
+      change. It prints a scored report and sets an exit code that CI can
+      use.
     </p>
     <div class="cta-row">
       <div class="install">
@@ -358,8 +358,8 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
     <span class="sec-label">The problem</span>
     <h2>What it looks for</h2>
     <p class="sec-intro">
-      Three failure modes that show up in agent-authored patches and are
-      cheap to miss in review.
+      Three failure modes that occur in agent-authored patches and are
+      easy to miss in review.
     </p>
     <div class="problems">
       <div class="problem">
@@ -382,7 +382,7 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
 
   <section id="checks">
     <span class="sec-label">What it checks</span>
-    <h2>Seven categories, one score</h2>
+    <h2>Checks</h2>
     <p class="sec-intro">
       <code style="font-family: var(--mono); font-size: 15px;">paranoid verify</code>
       compares the repository before and after the agent worked. Every finding
@@ -408,7 +408,7 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
       <div class="check">
         <span class="rid">SBX</span>
         <h3>Clean-room test run</h3>
-        <p>Reruns the test suite in a container with the network disabled, and collects coverage where the tooling allows. Catches results that only held on the agent's machine, and coverage that quietly dropped.</p>
+        <p>Reruns the test suite in a container with the network disabled, and collects coverage where the tooling allows. Detects results that only held on the agent's machine, and coverage that dropped.</p>
       </div>
       <div class="check">
         <span class="rid">CLM</span>
@@ -418,7 +418,7 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
       <div class="check">
         <span class="rid">AS</span>
         <h3>API surface</h3>
-        <p>Diffs public symbols between base and head and flags a symbol removed while the claims say a fix or feature landed: green by deletion, one layer deeper than deleting the test.</p>
+        <p>Diffs public symbols between base and head and flags a symbol removed while the claims say a fix or feature landed: a suite that passes because the code it tested was removed.</p>
       </div>
       <div class="check">
         <span class="rid">SF</span>
@@ -427,34 +427,34 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
       </div>
       <div class="check">
         <span class="rid">Score</span>
-        <h3>One score, clear thresholds</h3>
-        <p>Findings subtract from 100 by severity. The verdict and the exit code follow the score, so the same command works on your laptop and as a CI gate. Output as text, Markdown, schema-versioned JSON that is byte-identical across reruns, or SARIF for GitHub code scanning.</p>
+        <h3>Score</h3>
+        <p>Findings subtract from 100 by severity. The verdict and the exit code follow the score. Output as text, Markdown, schema-versioned JSON that is byte-identical across reruns, or SARIF for GitHub code scanning.</p>
       </div>
     </div>
   </section>
 
   <section id="loop">
     <span class="sec-label">Adoption</span>
-    <h2>Baseline in, fix-prompt out</h2>
+    <h2>Baseline and fix-prompt</h2>
     <p class="sec-intro">
-      Two commands for adopting paranoid in an existing repository and
-      feeding findings back to the agent.
+      Two commands: one for adopting paranoid in an existing repository,
+      one for passing findings back to the agent.
     </p>
     <div class="vows">
       <div class="vow">
         <h3>paranoid baseline</h3>
-        <p>Point paranoid at a repo that has never run it before and it reports everything, not just today's change. Run <code>paranoid baseline</code> once to snapshot existing findings into <code>.paranoid-baseline.json</code>; only new findings fail CI from then on. See <a href="docs/site/baseline.html">Baseline &amp; suppressions &rarr;</a></p>
+        <p>On a repository that has never run paranoid, verify reports every finding, not only those from the latest change. Run <code>paranoid baseline</code> once to snapshot existing findings into <code>.paranoid-baseline.json</code>; after that, only new findings fail CI. See <a href="docs/site/baseline.html">Baseline &amp; suppressions &rarr;</a></p>
       </div>
       <div class="vow">
         <h3>paranoid fix-prompt</h3>
-        <p><code>fix-prompt</code> renders the findings of a verify run into a deterministic instruction block you can paste back to the agent. See <a href="docs/site/fix-prompt.html">fix-prompt &rarr;</a></p>
+        <p><code>fix-prompt</code> renders the findings of a verify run as a deterministic instruction block to give back to the agent. See <a href="docs/site/fix-prompt.html">fix-prompt &rarr;</a></p>
       </div>
     </div>
   </section>
 
   <section id="ci">
     <span class="sec-label">CI usage</span>
-    <h2>Exit codes you can gate a merge on</h2>
+    <h2>Exit codes</h2>
     <div class="ci-grid">
       <div class="table-scroll">
         <table class="codes">
@@ -462,7 +462,7 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
           <tr><td>0</td><td class="v-pass">pass</td><td>score 80 or higher</td></tr>
           <tr><td>1</td><td class="v-warn">warn</td><td>score 50 to 79 (exit 2 with <span style="white-space: nowrap;">--strict</span>)</td></tr>
           <tr><td>2</td><td class="v-fail">fail</td><td>score below 50, or below <span style="white-space: nowrap;">--fail-under</span></td></tr>
-          <tr><td>3</td><td>error</td><td>the tool itself failed, never a finding</td></tr>
+          <tr><td>3</td><td>error</td><td>paranoid itself failed (not a finding)</td></tr>
         </table>
       </div>
       <div class="yamlbox">
@@ -477,7 +477,7 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
 
   <section id="principles">
     <span class="sec-label">Principles</span>
-    <h2>How it's built</h2>
+    <h2>Design</h2>
     <div class="vows">
       <div class="vow">
         <h3>Local and private</h3>
@@ -485,10 +485,10 @@ score: 40/100  verdict: <span class="t-fail">fail</span>
       </div>
       <div class="vow">
         <h3>Deterministic by default</h3>
-        <p>No LLM as judge. The default pipeline is static analysis, so the same input produces the same report, byte for byte in JSON. You can diff reports and trust reruns.</p>
+        <p>No LLM is used as a judge. The default pipeline is static analysis. The same input produces the same report, byte for byte in JSON.</p>
       </div>
       <div class="vow">
-        <h3>Fails soft</h3>
+        <h3>Skipped checks</h3>
         <p>A check that cannot run (no container runtime, no network, no recognizable test suite) is reported as skipped, and the run continues.</p>
       </div>
       <div class="vow">

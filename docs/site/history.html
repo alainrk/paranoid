@@ -132,18 +132,12 @@
 
     <h2>Saving reports</h2>
     <p>
-      <code>verify --save</code> writes the exact same report
-      <code>verify</code> already computed to
+      <code>verify --save</code> writes the report <code>verify</code> computed to
       <code>.paranoid/history/&lt;utc-timestamp&gt;-&lt;short-sha&gt;.json</code>,
       in addition to whatever <code>--format</code> and
       <code>--output</code> already do. The directory is created on
       demand. The timestamp is the run's own
-      <code>generated_at</code> value (the injectable clock every
-      other deterministic part of this tool already uses), not a
-      second, independent wall-clock read; the short SHA is the
-      current <code>HEAD</code> commit, truncated to 7 characters, so
-      each saved file is readable at a glance and collisions are rare
-      in practice.
+      <code>generated_at</code> value (the injectable clock used elsewhere in the tool), not a separate wall-clock read. The short SHA is the current <code>HEAD</code> commit, truncated to 7 characters, which keeps file names short and collisions rare.
     </p>
     <pre><code>$ paranoid verify --save
 ...
@@ -157,7 +151,7 @@ $ ls .paranoid/history/
       <code>generated_at</code>, and renders an HTML page with:
     </p>
     <ul>
-      <li>A score-over-time line chart, drawn as inline SVG by hand: no charting library, no remote fetch, nothing but numbers this command already has.</li>
+      <li>A score-over-time line chart, drawn as inline SVG, with no charting library and no remote fetch.</li>
       <li>A runs table: date, base..head, score, verdict, and finding count by category.</li>
       <li>One sparkline per finding category, showing how its count moved across the same runs.</li>
     </ul>
@@ -166,9 +160,7 @@ $ ls paranoid-history.html</code></pre>
     <p>
       A file that cannot be read, cannot be parsed, or was written by
       a build that used a different <code>history_version</code> is
-      skipped, with one line on stderr naming the file and why. One
-      corrupt or foreign file never blocks the rest of the series, and
-      the command never crashes over it.
+      skipped, with one line on stderr naming the file and why. A bad file does not block the rest of the series.
     </p>
 
     <h2>Determinism</h2>
@@ -177,9 +169,7 @@ $ ls paranoid-history.html</code></pre>
       Every value in the page, chart included, comes from the saved
       reports themselves (scores, dates, category counts); nothing is
       stamped in at render time. Runs are plotted at even, index-based
-      steps along the x-axis rather than scaled to calendar time,
-      since <code>verify --save</code> runs are irregular and even
-      spacing keeps the chart both simple and reproducible.
+      steps along the x-axis rather than scaled to calendar time, because <code>verify --save</code> runs are irregular. Even spacing keeps the chart simple and reproducible.
     </p>
 
     <h2>The history envelope, version 1</h2>
@@ -195,10 +185,7 @@ $ ls paranoid-history.html</code></pre>
       <tr><td>report</td><td>object</td><td>The full verify report, same shape as <code>--format json</code></td></tr>
     </table>
     <p>
-      A report schema bump never forces a history envelope version
-      bump, and the reverse is true too, the same relationship the
-      baseline file and the fix-prompt schema already have to the
-      report schema. See <a href="report-schema.html">Report &amp;
+      A change to the report schema does not require a change to the envelope version, and the reverse also holds. The baseline file and the fix-prompt schema are versioned the same way. See <a href="report-schema.html">Report &amp;
       schema</a>.
     </p>
 
@@ -207,7 +194,7 @@ $ ls paranoid-history.html</code></pre>
       <code>paranoid history --format json</code> prints the parsed,
       derived series instead of rendering HTML: one entry per run,
       plus the fixed, alphabetically sorted list of categories every
-      per-run breakdown uses. To stdout by default, for scripting.
+      per-run breakdown uses. Output goes to stdout by default.
     </p>
     <pre><code>{
   "history_version": 1,
@@ -227,12 +214,7 @@ $ ls paranoid-history.html</code></pre>
 
     <h2>Privacy</h2>
     <p>
-      Everything here is local. Saving, loading, and rendering never
-      make a network call, and the history directory never leaves
-      your machine unless you copy it somewhere yourself. Add
-      <code>.paranoid/</code> to your repository's
-      <code>.gitignore</code>; these are personal, local run records,
-      not something the team needs committed.
+      History is local. Saving, loading, and rendering make no network calls. Add <code>.paranoid/</code> to your repository's <code>.gitignore</code>; the files are local run records and are not meant to be committed.
     </p>
 
     <h2>Flags</h2>
@@ -242,8 +224,7 @@ $ ls paranoid-history.html</code></pre>
       <tr><td>--output</td><td>paranoid-history.html for html, stdout for json</td><td>Write the output to this file instead</td></tr>
     </table>
     <p>
-      <code>verify</code> itself gains one new flag:
-      <code>--save</code> (off by default), which has no effect on
+      <code>verify</code> accepts one more flag: <code>--save</code> (off by default). It has no effect on
       <code>verify</code>'s own score, verdict, or exit code.
     </p>
   </main>
