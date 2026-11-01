@@ -144,7 +144,7 @@
     sandbox: none # or auto, when the runner has docker
     claims: summary.md # optional</code></pre>
 
-    <h2>pre-commit</h2>
+    <h2 id="pre-commit">pre-commit</h2>
     <p>
       This repository ships <code>.pre-commit-hooks.yaml</code> with
       one hook, <code>paranoid-verify</code>. Add it to a target
@@ -194,6 +194,13 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
       </li>
     </ul>
 
+    <p>
+      To raise the bar, add <code>args: [--fail-under, "80"]</code> (or
+      any other <code>verify</code> flag) to the hook entry in the
+      target project's own <code>.pre-commit-config.yaml</code>.
+      pre-commit appends <code>args</code> after <code>entry</code>.
+    </p>
+
     <h3>Why language: golang</h3>
     <p>
       pre-commit's <code>golang</code> language builds the hook's own
@@ -217,7 +224,7 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
       </p>
     </div>
 
-    <h2>Claude Code</h2>
+    <h2 id="claude-code">Claude Code</h2>
     <p>
       A settings.json hook config, and an MCP server. Neither needs
       extra Go code; the hook is pure configuration. Full docs, the
@@ -292,7 +299,7 @@ pre-commit run paranoid-verify --all-files # try it once by hand</code></pre>
   }
 }</code></pre>
 
-    <h3>Trust boundary</h3>
+    <h3 id="trust-boundary">Trust boundary</h3>
     <p>
       Both integrations are only as trustworthy as the binary they run
       and the files that configure them. If the agent under audit can

@@ -162,7 +162,7 @@ a push to main it is an audit of what just merged.
 On a repository that has never run paranoid, `verify` reports every
 finding in the range, not only the latest change. A baseline
 snapshots those findings so only new ones fail CI. Full details:
-[docs/site/baseline.html](docs/site/baseline.html).
+[docs/site/baseline.html](https://alainrk.github.io/paranoid/docs/site/baseline.html).
 
 Run this once, from the repo root:
 
@@ -262,7 +262,7 @@ output labels it `suppressed-by-policy` rather than
 `suppressed-by-baseline`, so the two are never confused. A `[[disable]]`
 entry matches by rule ID alone, not by file: it suppresses that rule
 everywhere in the diff, not one specific finding of it. See
-[docs/site/report-schema.html](docs/site/report-schema.html) for the
+[docs/site/report-schema.html](https://alainrk.github.io/paranoid/docs/site/report-schema.html) for the
 exact JSON shape.
 
 The bar for adding a fifth key to this file is a design decision, not a
@@ -346,9 +346,9 @@ Guarantees:
 ## What it checks
 
 Every rule is documented with examples and known false positives in
-[docs/rules.md](docs/rules.md), the canonical, generated reference.
+[the rule reference](https://alainrk.github.io/paranoid/docs/site/rules.html), generated from the rule registry.
 `paranoid rules` prints the same list in your terminal, and
-[docs/site/rules.html](docs/site/rules.html) renders the same content
+[docs/site/rules.html](https://alainrk.github.io/paranoid/docs/site/rules.html) renders the same content
 as a web page.
 
 ### Test integrity (TI)
@@ -450,7 +450,7 @@ flagged for the sweep riding along with it.
 
 #### Supported agents
 
-Full details: [docs/site/sessions-claims.html](docs/site/sessions-claims.html).
+Full details: [docs/site/sessions-claims.html](https://alainrk.github.io/paranoid/docs/site/sessions-claims.html).
 
 `--session <file>` accepts any of the formats below; paranoid
 auto-detects which one a file is from its content, trying the parsers
@@ -508,7 +508,7 @@ and hook configuration just as often as in code. SF001 is the only
 rule that skips detected test files. This category is pattern-based
 text matching, not a security scanner; see [Limits](#limits). SF006
 watches paranoid's own control surface: see
-[Security notes and the trust boundary](integrations/claude-code/README.md#security-notes-and-the-trust-boundary).
+[the trust boundary](https://alainrk.github.io/paranoid/docs/site/integrations.html#trust-boundary).
 
 ### Formal verification (FV)
 
@@ -556,8 +556,8 @@ a git repo, git failure) and the report cannot be trusted either way.
 The report always lists which checks ran and which were skipped, with
 the reason, so a pass with skipped checks is visible.
 Full details, plus the JSON report schema and SARIF output:
-[docs/site/exit-codes-ci.html](docs/site/exit-codes-ci.html) and
-[docs/site/report-schema.html](docs/site/report-schema.html).
+[docs/site/exit-codes-ci.html](https://alainrk.github.io/paranoid/docs/site/exit-codes-ci.html) and
+[docs/site/report-schema.html](https://alainrk.github.io/paranoid/docs/site/report-schema.html).
 
 ## Formal verification
 
@@ -607,13 +607,13 @@ model, and the model is checked against your code on many inputs, not
 all of them. The report says exactly that: "Proved on the Lean model.
 The model matches the code on N generated inputs." It never says your
 code is proven. Full details:
-[docs/site/formal.html](docs/site/formal.html).
+[docs/site/formal.html](https://alainrk.github.io/paranoid/docs/site/formal.html).
 
 Try it with no Lean installed: `sh hack/demo/formal.sh`.
 
 ## fix-prompt
 
-Full details: [docs/site/fix-prompt.html](docs/site/fix-prompt.html).
+Full details: [docs/site/fix-prompt.html](https://alainrk.github.io/paranoid/docs/site/fix-prompt.html).
 
 `fix-prompt` renders the findings of a verify run into an instruction
 block you can hand back to the agent. Run `paranoid fix-prompt` the
@@ -653,7 +653,7 @@ verify report instead of re-running the pipeline; see
 
 ## watch
 
-Full details: [docs/site/watch.html](docs/site/watch.html).
+Full details: [docs/site/watch.html](https://alainrk.github.io/paranoid/docs/site/watch.html).
 
 `paranoid watch` watches a repository while an agent is working,
 instead of checking it after the fact:
@@ -797,7 +797,7 @@ local run records, not something a team needs committed, and saving,
 loading, and rendering never make a network call: everything here
 stays on your machine.
 
-See [docs/site/history.html](docs/site/history.html) for the history
+See [docs/site/history.html](https://alainrk.github.io/paranoid/docs/site/history.html) for the history
 envelope's versioned format and the full JSON series shape.
 
 ## Command reference
@@ -823,7 +823,7 @@ paranoid completion         shell autocompletion scripts
 
 ### verify flags
 
-Full details: [docs/site/verify.html](docs/site/verify.html).
+Full details: [docs/site/verify.html](https://alainrk.github.io/paranoid/docs/site/verify.html).
 
 | Flag                | Default                                           | Meaning                                                              |
 | ------------------- | ------------------------------------------------- | -------------------------------------------------------------------- |
@@ -870,7 +870,7 @@ color only on a real terminal and respects `NO_COLOR`.
 
 ### history flags
 
-Full details: [docs/site/history.html](docs/site/history.html).
+Full details: [docs/site/history.html](https://alainrk.github.io/paranoid/docs/site/history.html).
 
 | Flag       | Default                                                   | Meaning                                    |
 | ---------- | ---------------------------------------------------------- | ------------------------------------------- |
@@ -912,7 +912,7 @@ file).
 
 ### watch flags
 
-Full details: [docs/site/watch.html](docs/site/watch.html).
+Full details: [docs/site/watch.html](https://alainrk.github.io/paranoid/docs/site/watch.html).
 
 | Flag       | Default | Meaning                                                                          |
 | ---------- | ------- | --------------------------------------------------------------------------------- |
@@ -953,7 +953,7 @@ already made with the old key).
 
 ## The clean room
 
-Full details: [docs/site/sandbox.html](docs/site/sandbox.html).
+Full details: [docs/site/sandbox.html](https://alainrk.github.io/paranoid/docs/site/sandbox.html).
 
 The clean room is the check behind the SBX rules. With docker or
 podman available, `verify` copies the head state into a container,
@@ -988,7 +988,7 @@ runtime.
 - Go analysis uses the real parser and is exact. Python and JS/TS
   analysis is line heuristics: it can miss things and occasionally
   flags honest work. Every heuristic rule documents its false
-  positives in [docs/rules.md](docs/rules.md).
+  positives in [the rule reference](https://alainrk.github.io/paranoid/docs/site/rules.html).
 - Error-handling rules (EH001 to EH005) match a base version of a
   block or statement against its head counterpart by text (a call's
   source text, an except header, a catch parameter name), not by a
@@ -1054,7 +1054,7 @@ runtime.
   ordinary hook maintenance) included. It surfaces the change for
   review; it does not, by itself, stop an agent that can also edit
   the paranoid binary or its config from tampering undetected. See
-  [the trust boundary](integrations/claude-code/README.md#security-notes-and-the-trust-boundary).
+  [the trust boundary](https://alainrk.github.io/paranoid/docs/site/integrations.html#trust-boundary).
   `.paranoid.toml` is not watched by SF006: an agent could add a
   `[[disable]]` entry for a rule that would otherwise flag its own
   work, and this would not be surfaced the way editing the baseline
@@ -1194,7 +1194,7 @@ third-party code scanning integration).
 
 ## Integrations
 
-Full details: [docs/site/integrations.html](docs/site/integrations.html).
+Full details: [docs/site/integrations.html](https://alainrk.github.io/paranoid/docs/site/integrations.html).
 
 ### pre-commit
 
@@ -1220,7 +1220,7 @@ nothing left for `--base HEAD` to diff. Full details, including why
 the hook uses `language: golang` (no manual paranoid install needed,
 only a Go toolchain, which pre-commit can provision itself) and how
 to raise `--fail-under` for the hook, are in
-[integrations/README.md](integrations/README.md).
+[the pre-commit docs](https://alainrk.github.io/paranoid/docs/site/integrations.html#pre-commit).
 
 ### Claude Code
 
@@ -1234,7 +1234,7 @@ binary, `.paranoid-baseline.json`, or the hook configuration can
 defeat either integration, though SF006 flags a change to the
 baseline file or a hook configuration file as a finding in the next
 run. Full details, the settings snippet, and this limit spelled out:
-[integrations/claude-code/README.md](integrations/claude-code/README.md).
+[the Claude Code docs](https://alainrk.github.io/paranoid/docs/site/integrations.html#claude-code).
 
 ## Contributing
 
