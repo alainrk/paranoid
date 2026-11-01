@@ -48,8 +48,8 @@ clean container, and prints a report with concrete findings, a 0 to
 
 ## AI full disclosure
 
-This software is built with strong assistance from `Claude Fable` and
-`GPT 5.6`, with humans leading the ideas, testing, and debugging. If
+This software is built with strong assistance from `Claude Fable`,
+`Claude Opus 5.5`, and `GPT 5.6`, with humans leading the ideas, testing, and debugging. If
 you do not want AI-developed code, this software is not for you.
 
 ## Install
